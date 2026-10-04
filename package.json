@@ -1,0 +1,36 @@
+{
+  "name": "puttipeli",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Puttipeli – selainpohjainen 2D-minigolf moninpelillä ja rataeditorilla",
+  "type": "module",
+  "workspaces": [
+    "packages/shared",
+    "packages/client",
+    "packages/server"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n client,server -c cyan,magenta \"npm run dev -w packages/client\" \"npm run dev -w packages/server\"",
+    "build": "npm run build -w packages/client && npm run build -w packages/server",
+    "start": "node packages/server/dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:golden-update": "cross-env GOLDEN_UPDATE=1 vitest run packages/shared/src/sim",
+    "typecheck": "tsc -b packages/shared packages/client packages/server",
+    "lint": "eslint .",
+    "check": "npm run typecheck && npm run lint && npm test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/node": "^24.0.0",
+    "@types/ws": "^8.5.13",
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
+    "esbuild": "^0.25.0",
+    "eslint": "^9.0.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.0.0",
+    "vite": "^6.0.0",
+    "vitest": "^3.0.0"
+  }
+}

@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.vite/
+coverage/
+.env
+.env.*
+# .env.example is a committed template (WP-J deliverable, DESIGN §3), not a secret
+!.env.example
+*.log
+.DS_Store
+Thumbs.db
+# tsc -b is typecheck-only: declarations and build info land in an ignored folder (DESIGN D8)
+.tsout/
+*.tsbuildinfo
