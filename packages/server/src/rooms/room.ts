@@ -61,8 +61,6 @@ export class Room {
   private readonly leaveReasons = new Map<string, RoomLeftReason>();
   /** Spectator id currently moving to a seat: its spectatorLeft must not remove the member. */
   private promoting: string | null = null;
-  /** While a member rejoins: frames addressed to them are queued and sent right after roomJoined. */
-  private deferred: { id: string; queue: ServerMessage[] } | null = null;
   private closed = false;
 
   constructor(
@@ -191,19 +189,12 @@ export class Room {
       old.clearRoom(); // so the close below is not treated as a disconnect of this member
       old.close(CLOSE_REPLACED, 'session resumed elsewhere');
     }
-    // The Authority runs first so the snapshot already shows connected: true (and a fresh turn when one is started),
-    // while the rejoiner's own copies of those frames wait until roomJoined has been sent (§6.4 ordering). Both events
-    // are idempotent on a snapshot that already reflects them.
-    const deferred: ServerMessage[] = [];
-    this.deferred = { id: member.id, queue: deferred };
-    try {
-      if (member.role === 'player') this.authority.connection(member.id, true);
-    } finally {
-      this.deferred = null;
-    }
+    // The snapshot is taken before the Authority applies connection(true) (R20): the rejoiner then receives the
+    // playerConnection{true} (and a fresh turnStarted) frames through the normal broadcast, exactly like every other
+    // member, so its reduced state (seq included) equals the server's instead of running one event ahead.
     this.attach(member, session);
     session.send(this.roomJoinedFor(member));
-    for (const msg of deferred) session.send(msg);
+    if (member.role === 'player') this.authority.connection(member.id, true);
     this.sendBacklog(session);
     this.touch();
     this.deps.log.debug('rejoin', { room: this.code, member: member.id, conn: session.id });
@@ -347,7 +338,6 @@ export class Room {
     for (const m of this.members.values()) {
       if (m.id === exceptId) continue;
       if (m.session) m.session.send(msg);
-      else if (this.deferred !== null && this.deferred.id === m.id) this.deferred.queue.push(msg);
     }
   }
 

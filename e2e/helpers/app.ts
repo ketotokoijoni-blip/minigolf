@@ -147,7 +147,7 @@ export const FI = {
   yourTurn: 'Sinun vuorosi',
   ballMoving: 'Pallo liikkuu…',
   turnOf: (name: string): string => `Vuorossa: ${name}`,
-  testPlayLabel: 'Testaus · Esc: takaisin editoriin',
+  testPlayLabel: 'Testaus · Esc: takaisin',
 } as const;
 
 // ---------------------------------------------------------------------------------------------------------------

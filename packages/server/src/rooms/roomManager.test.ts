@@ -334,7 +334,8 @@ describe('leaving, disconnecting, rejoining', () => {
     const rj = h.joined(p2b);
     expect(rj.playerId).toBe(p2Join.playerId);
     expect(rj.role).toBe('player');
-    expect(rj.state.players.find((p) => p.id === rj.playerId)?.connected).toBe(true);
+    expect(rj.state.players.find((p) => p.id === rj.playerId)?.connected).toBe(false); // R20: snapshot predates connection(true); the frame below completes it
+    expect(h.rooms.get(host.code)?.state.players.find((p) => p.id === rj.playerId)?.connected).toBe(true);
     expect(h.events(host.c)).toEqual([{ type: 'playerConnection', playerId: p2Join.playerId, connected: true }]);
     // roomJoined, then the playerConnection broadcast (the member is connected again), then the chat backlog:
     // system lines for both joins + the chat line

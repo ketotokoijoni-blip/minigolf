@@ -320,7 +320,8 @@ describe('disconnects, rejoin and removal during a round', () => {
 
     p2.c.disconnect(); // on turn with the normal 45 s deadline -> shortened to the disconnected wait with a fresh turn
     expect(h.eventTypes(host.c)).toEqual(['playerConnection', 'turnStarted']);
-    expect(h.lastEvent(host.c, 'turnStarted')).toEqual({ type: 'turnStarted', playerId: p2.id, turnSeq: 3, deadlineMs: h.clock.now() + DISCONNECTED_TURN_WAIT_SEC * 1000 });
+    const shortDeadline = h.clock.now() + DISCONNECTED_TURN_WAIT_SEC * 1000;
+    expect(h.lastEvent(host.c, 'turnStarted')).toEqual({ type: 'turnStarted', playerId: p2.id, turnSeq: 3, deadlineMs: shortDeadline });
     expect(h.room(code).hostId).toBe(host.id);
     h.clock.advance(4000);
     h.clearAll(host.c);
@@ -334,12 +335,15 @@ describe('disconnects, rejoin and removal during a round', () => {
     const j = h.joined(back);
     expect(j.playerId).toBe(p2.id);
     expect(j.role).toBe('player');
-    expect(j.state.players.find((p) => p.id === p2.id)?.connected).toBe(true);
+    // R20: the snapshot predates connection(true); the two frames that follow bring the rejoiner to the server's state.
+    expect(j.state.players.find((p) => p.id === p2.id)?.connected).toBe(false);
     expect(j.state.phase).toBe('hole');
     expect(j.state.balls[host.id]).toBeDefined();
     const fresh = { type: 'turnStarted', playerId: p2.id, turnSeq: 4, deadlineMs: h.clock.now() + DEFAULT_TURN_TIMEOUT_SEC * 1000 };
-    expect(j.state.turn).toEqual({ playerId: p2.id, turnSeq: 4, deadlineMs: fresh.deadlineMs, shotInFlight: false });
+    expect(j.state.turn).toEqual({ playerId: p2.id, turnSeq: 3, deadlineMs: shortDeadline, shotInFlight: false });
     expect(h.types(back).slice(0, 3)).toEqual(['roomJoined', 'event:playerConnection', 'event:turnStarted']);
+    expect(h.room(code).state.seq).toBe(j.state.seq + 2);
+    expect(h.room(code).state.turn).toEqual({ playerId: p2.id, turnSeq: 4, deadlineMs: fresh.deadlineMs, shotInFlight: false });
     expect(h.lastEvent(back, 'turnStarted')).toEqual(fresh);
     expect(back.sent.slice(3).every((m) => m.t === 'chat')).toBe(true);
     expect(back.sent.slice(3).map((m) => (m.t === 'chat' ? m.key : ''))).toEqual(['chat.playerJoined', 'chat.playerJoined', 'chat.gameStarted']);

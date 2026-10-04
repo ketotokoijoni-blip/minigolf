@@ -136,17 +136,11 @@ test.describe('shell screens', () => {
 
     await expect(page.locator('.rules').first().locator('li')).toHaveCount(10);
     await expect(page.locator('.rules').nth(1).locator('li')).toHaveCount(5);
-    // The multiplayer how-to ends with a #/mp button (help.screen.ts, `variant: 'ghost'`). It works, but the
-    // ghost variant has a transparent background and border, so in 04-help.png it reads as a bare bold text line
-    // with no button affordance. Reported to WP-E (help.screen.ts / styles.css); recorded here for the lead.
+    // The multiplayer how-to ends with a #/mp button in the normal button style (R20; it used to be a ghost
+    // variant that read as plain text in 04-help.png).
     const mpLink = page.locator('.help-section').nth(3).getByRole('button', { name: 'Moninpeli' });
     await expect(mpLink).toBeVisible();
-    if (await mpLink.evaluate((el) => el.classList.contains('btn--ghost'))) {
-      test.info().annotations.push({
-        type: 'ui-defect',
-        description: 'WP-E: help page #/mp button uses the ghost variant and renders as plain text (04-help.png, bottom)',
-      });
-    }
+    await expect(mpLink).not.toHaveClass(/btn--ghost/);
     await expectNoRawKeys(page);
     await shot(page, '04-help');
     expectCleanConsole(log);

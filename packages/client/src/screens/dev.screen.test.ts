@@ -12,12 +12,11 @@ import {
 afterEach(() => resetSimTuning());
 
 describe('#/dev tuning keys', () => {
-  it('excludes exactly MAX_PULL_PX and MIN_PULL_PX (R3) and keeps every other SIM_TUNING_KEYS entry in order', () => {
-    expect(EXCLUDED_TUNING_KEYS).toEqual(['MAX_PULL_PX', 'MIN_PULL_PX']);
-    expect(DEV_TUNING_KEYS).not.toContain('MAX_PULL_PX');
-    expect(DEV_TUNING_KEYS).not.toContain('MIN_PULL_PX');
-    expect(DEV_TUNING_KEYS).toEqual(SIM_TUNING_KEYS.filter((k) => k !== 'MAX_PULL_PX' && k !== 'MIN_PULL_PX'));
-    expect(DEV_TUNING_KEYS.length).toBe(SIM_TUNING_KEYS.length - 2);
+  it('excludes exactly the pull cap/dead zone (R3) and the four magnet limits (R20) and keeps every other SIM_TUNING_KEYS entry in order', () => {
+    expect(EXCLUDED_TUNING_KEYS).toEqual(['MAX_PULL_PX', 'MIN_PULL_PX', 'MAGNET_MIN_STRENGTH', 'MAGNET_MAX_STRENGTH', 'MAGNET_MIN_RADIUS', 'MAGNET_MAX_RADIUS']);
+    for (const k of EXCLUDED_TUNING_KEYS) expect(DEV_TUNING_KEYS, k).not.toContain(k);
+    expect(DEV_TUNING_KEYS).toEqual(SIM_TUNING_KEYS.filter((k) => !EXCLUDED_TUNING_KEYS.includes(k)));
+    expect(DEV_TUNING_KEYS.length).toBe(SIM_TUNING_KEYS.length - 6);
   });
 
   it('has a slider spec for every key whose range contains the constants.ts default', () => {
@@ -100,12 +99,11 @@ describe('#/dev value helpers', () => {
 });
 
 describe('#/dev constants.ts snippet', () => {
-  it('lists every slider key once as an export const line, in constants.ts order, with no R3 keys', () => {
+  it('lists every slider key once as an export const line, in constants.ts order, with no excluded keys', () => {
     const text = tuningSnippet();
     const lines = text.split('\n').filter((l) => l.startsWith('export const '));
     expect(lines.map((l) => l.split(' ')[2])).toEqual([...DEV_TUNING_KEYS]);
-    expect(text).not.toContain('MAX_PULL_PX');
-    expect(text).not.toContain('MIN_PULL_PX');
+    for (const k of EXCLUDED_TUNING_KEYS) expect(text, k).not.toContain(k);
     expect(text.startsWith('// Puttipeli #/dev tuning snippet: 0 of')).toBe(true);
     for (const k of DEV_TUNING_KEYS) expect(text).toContain(`export const ${k} = ${formatValue(k, SIM_TUNING_DEFAULTS[k])};`);
     expect(text).not.toContain('// was');

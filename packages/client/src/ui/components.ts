@@ -89,7 +89,7 @@ export function toast(text: string, kind: 'info' | 'error' = 'info', ms = kind =
 
 /** Labelled form field wrapper. */
 export function field(labelText: string, control: HTMLElement, opts: { hint?: string; inline?: boolean; id?: string } = {}): HTMLElement {
-  const id = opts.id ?? control.id ?? `f_${Math.random().toString(36).slice(2, 8)}`;
+  const id = opts.id ?? (control.id || `f_${Math.random().toString(36).slice(2, 8)}`); // control.id of an id-less element is "", not undefined
   control.id = id;
   const label = el('label', { for: id }, labelText);
   const wrap = el('div', { class: opts.inline ? 'field field--inline' : 'field' }, label, control);

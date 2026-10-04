@@ -63,8 +63,8 @@ Node-ajo: `packages/server/src/integration.test.ts` käynnistää oikean palveli
 | 2.6 | `requestSnapshot` → `roomState` | = `gameStateToJson` asiakkaan reducer-tilasta, `hashSimState` joka pallolle sama | **OK** |
 | 2.7 | Tapahtumajärjestys ja `seq` identtiset kaikilla asiakkailla | sama | **OK** |
 | 2.8 | Yhteyden katkeaminen aulassa: muut näkevät `playerConnection{false}` | kyllä | **OK** |
-| 2.9 | Uudelleenliittyminen `rejoin{code, token}` | väärä token → `SESSION_EXPIRED`; oikea → `roomJoined` samalla `playerId`llä, täysi tila, muut näkevät `playerConnection{true}` | **OK**, mutta ks. **VIKA 2.9a** |
-| 2.9a | Uudelleenliittyjän tila = palvelimen tila | identtinen | **VIKA (WP-F, lievä)** – `Room.rejoin` lähettää uudelleenliittyjälle sen oman lykätyn `playerConnection{true}`-tapahtuman `roomJoined`-tilannekuvan *jälkeen*, vaikka tilannekuva jo sisältää sen; reducer kasvattaa `seq`:iä, joten uudelleenliittyjän `seq` on yhden edellä palvelinta ja muita. Kaikki muut kentät identtiset; mikään asiakaslogiikka ei lue `seq`:iä (§5.5 "debugging"). Korjaus: älä jonota omaa `playerConnection`/`turnStarted`-kopiota uudelleenliittyjälle, tai ota tilannekuva ennen `authority.connection(true)`-kutsua. Testi vertaa toistaiseksi ilman `seq`-kenttää. |
+| 2.9 | Uudelleenliittyminen `rejoin{code, token}` | väärä token → `SESSION_EXPIRED`; oikea → `roomJoined` samalla `playerId`llä, täysi tila, muut näkevät `playerConnection{true}` | **OK** |
+| 2.9a | Uudelleenliittyjän tila = palvelimen tila | identtinen (myös `seq`) | **OK** – korjattu R20:ssä: `Room.rejoin` ottaa tilannekuvan ennen `authority.connection(true)`-kutsua ja uudelleenliittyjä saa `playerConnection{true}`/`turnStarted`-tapahtumat tavallisen lähetyksen kautta kuten muutkin; `integration.test.ts` vertaa tilat täsmälleen `seq` mukaan lukien. |
 | 2.10 | Poistuminen: `leaveRoom` → `roomLeft{left}`, muut saavat `playerLeft`; viimeisen poistuttua huone katoaa heti, `/api/stats` → 0 | kyllä | **OK** |
 | 2.11 | Viesti huoneen ulkopuolelta (`requestSnapshot` poistumisen jälkeen) | `error NOT_IN_ROOM`, socket pysyy auki | **OK** |
 | 2.12 | Kahden selaimen kierros oikealla käyttöliittymällä (aula, Valmis, Aloita, vuorot, tuloskortti, chat) | molemmat ikkunat näkevät saman pelin; vuoromerkki ja ajastinrengas vaihtuvat | **WP-L** (`e2e/04-multiplayer.spec.ts`) – `e2e/screenshots/16-mp.png` (moninpelivalikko), `17-lobby-host.png` / `18-lobby-guest.png` (aula isäntä/vieras), `19-mp-game-host.png` / `20-mp-game-guest.png` (sama peli kahdessa ikkunassa, vuoromerkki), `21-mp-chat.png` (chat) |
@@ -120,7 +120,7 @@ Node-ajo: `packages/server/src/integration.test.ts` käynnistää oikean palveli
 | 6.4 | Live-validointi: virheet punaisella estävät Testaa/Vie/Jaa; varoitukset eivät | kyllä | **WP-L** – `e2e/screenshots/14-editor-validation-issue.png` |
 | 6.5 | Tallenna / Avaa / Monista / Poista omissa radoissa; luonnos säilyy sivun päivityksen yli | kyllä | **WP-L** – `e2e/screenshots/14b-editor-library.png` (Omat radat -kirjasto) |
 | 6.6 | Vie JSON / Lataa JSON / pudotus kentälle / Jaa koodina / Tuo koodista | sama rata palaa identtisenä (`courseId` sama) | **WP-L** |
-| 6.7 | Testaa → `#/game` (HUD "Testaus · Esc: takaisin editoriin") → paluu editoriin historia tallella | kyllä | **WP-L** – `e2e/screenshots/15-editor-testplay.png` |
+| 6.7 | Testaa → `#/game` (HUD "Testaus · Esc: takaisin") → paluu editoriin historia tallella | kyllä | **WP-L** – `e2e/screenshots/15-editor-testplay.png` |
 | 6.8 | Editorissa tehty rata pelattavissa yksinpelissä ja moninpelihuoneessa (`{kind:'custom', course}`) | kyllä; `b_`-tunniste korvataan (R13) | **OK** palvelinpuoli (`courseStore.test.ts`) + **WP-L** käyttöliittymä |
 
 ## 7. Kehittäjän säätöpaneeli `#/dev` (WP-K, §12.1)
@@ -128,13 +128,13 @@ Node-ajo: `packages/server/src/integration.test.ts` käynnistää oikean palveli
 | # | Tarkistus | Odotus | Tulos |
 |---|-----------|--------|-------|
 | 7.1 | Reitti `#/dev` rekisteröityy kuten muut `*.screen.ts` | `getScreenRegistry().has('#/dev')` | **OK** (`dev.screen.test.ts`) |
-| 7.2 | Liukusäädin jokaiselle `SIM_TUNING_KEYS`-avaimelle paitsi `MAX_PULL_PX`/`MIN_PULL_PX` (R3) | 37 säädintä viidessä ryhmässä; oletusarvo jokaisen alueella | **OK** (`dev.screen.test.ts`) |
-| 7.3 | Säätö vaikuttaa heti (`setSimTuning`), muutetut rivit korostuvat, "N arvoa muutettu" | seuraava lyönti käyttää uutta arvoa (esim. `FRICTION_GRASS` 50 → pallo rullaa paljon pidemmälle) | **OK** 2026-10-04 – WP-K:n headless Chromium -savutesti tuotantobundlea vasten (1400×900): 37 säädintä, 5 ryhmää, `FRICTION_GRASS` → 50 korostaa rivin ja näyttää "1 arvoa muutettu"; lyönti välilyönnillä kasvattaa HUD:n lyöntilaskuria; 0 konsolivirhettä. Virallinen kuvakaappaus: **WP-L** – `e2e/screenshots/22-dev.png` (`e2e/01-menu.spec.ts`: säätimet, upotettu peli, muutos + palautus) |
+| 7.2 | Liukusäädin jokaiselle `SIM_TUNING_KEYS`-avaimelle paitsi `MAX_PULL_PX`/`MIN_PULL_PX` (R3) ja neljälle `MAGNET_MIN/MAX_*`-rajalle (R20) | 33 säädintä neljässä ryhmässä (39 avainta − 6); oletusarvo jokaisen alueella | **OK** (`dev.screen.test.ts`) |
+| 7.3 | Säätö vaikuttaa heti (`setSimTuning`), muutetut rivit korostuvat, "N arvoa muutettu" | seuraava lyönti käyttää uutta arvoa (esim. `FRICTION_GRASS` 50 → pallo rullaa paljon pidemmälle) | **OK** 2026-10-04 – WP-K:n headless Chromium -savutesti tuotantobundlea vasten (1400×900): 37 säädintä, 5 ryhmää (ennen R20:tä; nyt 33 säädintä, 4 ryhmää – `dev.screen.test.ts`), `FRICTION_GRASS` → 50 korostaa rivin ja näyttää "1 arvoa muutettu"; lyönti välilyönnillä kasvattaa HUD:n lyöntilaskuria; 0 konsolivirhettä. Virallinen kuvakaappaus: **WP-L** – `e2e/screenshots/22-dev.png` (`e2e/01-menu.spec.ts`: säätimet, upotettu peli, muutos + palautus) |
 | 7.4 | Ratavalitsin (perusradat + validit omat radat) käynnistää valitun radan uudelleen upotetussa pelissä | kyllä | **OK** – savutesti: valinta "5. Portaali" → HUD "Portaali · PAR 3 · LYÖNNIT 0" |
 | 7.5 | "Palauta oletukset" → `resetSimTuning`, säätimet palaavat | "Kaikki arvot ovat oletuksia" | **OK** – savutesti: teksti palaa, liukusäädin 200 |
-| 7.6 | "Kopioi arvot" → leikepöydälle `constants.ts`-katkelma (`export const NAME = value; // was X`) | katkelma kattaa 37 avainta, ei R3-avaimia | **OK** – muoto (`dev.screen.test.ts`) ja leikepöytä (savutesti luki `export const FRICTION_GRASS = 50; // was 200`); ilman leikepöytäoikeutta näytetään tekstikenttä |
+| 7.6 | "Kopioi arvot" → leikepöydälle `constants.ts`-katkelma (`export const NAME = value; // was X`) | katkelma kattaa 33 avainta, ei R3/R20-avaimia | **OK** – muoto (`dev.screen.test.ts`) ja leikepöytä (savutesti luki `export const FRICTION_GRASS = 50; // was 200`); ilman leikepöytäoikeutta näytetään tekstikenttä |
 | 7.7 | Poistuminen sivulta → `resetSimTuning()`; moninpeli (`RoomSession`) nollaa säädöt rakentajassa | `isSimTuningDefault()` tosi | **OK** koodiluku (`dev.screen.ts unmount`, `roomClient.ts:142`); savutesti: "Takaisin" → `#/` ilman virheitä |
-| 7.8 | Upotettu peli = sama `GameController` + `LocalHost` kuin `#/game`, `testPlay: true` | HUD-etiketti "Testaus · Esc: takaisin editoriin"; yhteenvedon "Takaisin editoriin" aloittaa radan alusta paneelissa | **OK** – savutesti näyttää etiketin ja pelaajasirun; huom. etiketin sanamuoto tulee WP-G:n `game.testPlay`-merkkijonosta (tarkoitettu editorille) – kosmeettinen |
+| 7.8 | Upotettu peli = sama `GameController` + `LocalHost` kuin `#/game`, `testPlay: true` | HUD-etiketti "Testaus · Esc: takaisin"; yhteenvedon "Takaisin editoriin" aloittaa radan alusta paneelissa | **OK** – savutesti näyttää etiketin ja pelaajasirun; etiketti neutraali (R20) |
 
 ## 8. Alkuperäisyys ja sisältö
 
@@ -148,7 +148,7 @@ Node-ajo: `packages/server/src/integration.test.ts` käynnistää oikean palveli
 
 ## Yhteenveto 2026-10-04 (WP-K)
 
-- Node-ajettavat rivit (0.x, 1.1–1.14, 2.1–2.11, 7.1–7.2, 7.6 muoto, 8.x): **OK**, yksi lievä poikkeama **2.9a (WP-F)**.
+- Node-ajettavat rivit (0.x, 1.1–1.14, 2.1–2.11, 7.1–7.2, 7.6 muoto, 8.x): **OK** (2.9a korjattu R20:ssä).
 - Rivi 1.15 ei ajettavissa Windowsissa ilman konttia; rivillä on leadille valmis `docker`-resepti.
 - Selainrivit (3–7) viittaavat WP-L:n (`npm run e2e`, R18) oikeasti kirjoittamiin kuvakaappauksiin
   `e2e/screenshots/NN-*.png` (numerot 01–22 kertovat specien suoritusjärjestyksen; nimet luettu

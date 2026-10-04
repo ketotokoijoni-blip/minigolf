@@ -20,15 +20,13 @@ export const fiDev: Dict = {
   'dev.changed': '{count} arvoa muutettu',
   'dev.changed.none': 'Kaikki arvot ovat oletuksia',
   'dev.default': 'oletus {value}',
-  'dev.excluded': 'MAX_PULL_PX ja MIN_PULL_PX eivät ole säädettävissä (palvelin tarkistaa lyönnit kiinteillä arvoilla, R3).',
+  'dev.excluded': 'MAX_PULL_PX ja MIN_PULL_PX eivät ole säädettävissä (palvelin tarkistaa lyönnit kiinteillä arvoilla, R3). MAGNET_MIN/MAX_STRENGTH ja MAGNET_MIN/MAX_RADIUS ovat radan purun tarkistusrajoja, eivät säätimiä (R20).',
   'dev.game.failed': 'Pelin käynnistys epäonnistui.',
 
   'dev.group.shot': 'Lyönti',
   'dev.group.collision': 'Törmäys',
   'dev.group.surfaces': 'Pinnat',
   'dev.group.objects': 'Kohteet',
-  'dev.group.magnetLimits': 'Magneettien rajat',
-  'dev.group.magnetLimits.hint': 'Rajat luetaan radan purussa suoraan constants.ts:stä, joten liukusäätimet eivät vaikuta peliin ennen koodimuutosta. Ne näkyvät kopioidussa katkelmassa.',
 
   'dev.key.POWER_SCALE': 'Lähtönopeus px/s per vetopikseli (120 px veto → MAX = 120 × tämä)',
   'dev.key.MAX_SPEED': 'Nopeuden yläraja px/s (yli 900 voi tunneloitua seinistä)',
@@ -62,10 +60,6 @@ export const fiDev: Dict = {
   'dev.key.MINE_TRIGGER_RADIUS': 'Miinan laukaisusäde px',
   'dev.key.MAGNET_DEFAULT_STRENGTH': 'Magneetin oletusvoima px/s² (editorin uusi magneetti)',
   'dev.key.MAGNET_DEFAULT_RADIUS': 'Magneetin oletussäde px',
-  'dev.key.MAGNET_MIN_STRENGTH': 'Pienin sallittu magneetin voima',
-  'dev.key.MAGNET_MAX_STRENGTH': 'Suurin sallittu magneetin voima (R12: yli ~600 pallo ei koskaan pysähdy)',
-  'dev.key.MAGNET_MIN_RADIUS': 'Pienin sallittu magneetin säde',
-  'dev.key.MAGNET_MAX_RADIUS': 'Suurin sallittu magneetin säde',
   'dev.key.MAGNET_DEAD_ZONE': 'Etäisyys px magneetin keskeltä, jonka sisällä ei ole voimaa',
 };
 

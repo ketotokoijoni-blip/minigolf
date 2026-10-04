@@ -14,7 +14,7 @@ import { registerDictionary, t } from '../i18n/t';
 // ---------------------------------------------------------------------------------------------------------------
 
 registerDictionary('fi', {
-  'game.testPlay': 'Testaus · Esc: takaisin editoriin',
+  'game.testPlay': 'Testaus · Esc: takaisin',
   'game.hole': 'Rata {n}/{total}',
   'game.par': 'Par {par}',
   'game.author': 'Tekijä: {author}',
@@ -66,7 +66,7 @@ registerDictionary('fi', {
 });
 
 registerDictionary('en', {
-  'game.testPlay': 'Test play · Esc: back to the editor',
+  'game.testPlay': 'Test play · Esc: back',
   'game.hole': 'Hole {n}/{total}',
   'game.par': 'Par {par}',
   'game.author': 'Author: {author}',

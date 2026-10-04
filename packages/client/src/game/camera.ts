@@ -9,15 +9,20 @@ export const FRAME_PX = TILE;
 export const LOGICAL_W = FIELD_W + 2 * FRAME_PX; // 765
 export const LOGICAL_H = FIELD_H + 2 * FRAME_PX; // 405
 
+/** R20: the integer scale wins only when it keeps at least this share of the fractional fit. */
+export const INTEGER_SCALE_MIN_RATIO = 0.8;
+
 /**
- * Chooses the logical->CSS scale for a container: min(w/765, h/405). Per §12.2 the integer scale is used whenever
- * the raw scale is >= 1 (crisp 1 px lines, nearest-neighbour static blit); below 1 the fractional scale is kept
- * so the whole field stays visible on small screens.
+ * Chooses the logical->CSS scale for a container: min(w/765, h/405). Per §12.2 and R20 the integer scale is used
+ * when the raw scale is >= 1 and floor(raw) >= 0.8 * raw (crisp 1 px lines, nearest-neighbour blits); otherwise
+ * the fractional scale is kept (with image smoothing, see applyTransform) so the field fills the window instead
+ * of staying at 1x in a 1280x800 window, and so the whole field stays visible on small screens.
  */
 export function chooseScale(containerW: number, containerH: number): number {
   const raw = Math.min(containerW / LOGICAL_W, containerH / LOGICAL_H);
   if (!(raw > 0) || !Number.isFinite(raw)) return 1;
-  return raw >= 1 ? Math.floor(raw) : raw;
+  const whole = Math.floor(raw);
+  return whole >= 1 && whole >= INTEGER_SCALE_MIN_RATIO * raw ? whole : raw;
 }
 
 export class Camera {

@@ -119,7 +119,7 @@ describe('GameController: start of a round', () => {
 
   it('test play shows the HUD label', () => {
     const r = rig(BUILTIN_COURSES.slice(0, 1), { testPlay: true });
-    expect(r.view.hud.label).toBe('Testaus · Esc: takaisin editoriin');
+    expect(r.view.hud.label).toBe('Testaus · Esc: takaisin');
     r.ctl.destroy();
   });
 });

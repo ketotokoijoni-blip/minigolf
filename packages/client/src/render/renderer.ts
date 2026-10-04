@@ -190,7 +190,7 @@ export class Renderer {
     const ctx = this.dynCtx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = !Number.isInteger(this.camera.scale); // R20: smooth at fractional scales only
     ctx.drawImage(this.staticCanvas, 0, 0);
     this.camera.applyTransform(ctx);
     ctx.save();

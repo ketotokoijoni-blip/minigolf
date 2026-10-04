@@ -124,7 +124,7 @@ function createHelpScreen(): Screen {
       const mp = el('section', { class: 'card help-section' },
         el('h2', {}, t('help.mp')),
         el('ul', { class: 'rules' }, ...['code', 'ready', 'turns', 'spectators', 'disconnect'].map((k) => el('li', {}, t(`help.mp.${k}`)))),
-        el('div', { class: 'row' }, button(t('menu.multi'), () => ctx.navigate('#/mp'), { variant: 'ghost' })),
+        el('div', { class: 'row' }, button(t('menu.multi'), () => ctx.navigate('#/mp'))),
       );
 
       root.append(el('div', { class: 'screen' },

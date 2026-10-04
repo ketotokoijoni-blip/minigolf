@@ -24,18 +24,24 @@ import { button, el, toast } from '../ui/components';
 // Pure helpers
 // ---------------------------------------------------------------------------------------------------------------
 
-/** R3: the pull cap and dead zone are validated by the server with the fixed constants, so they are never tunable. */
-export const EXCLUDED_TUNING_KEYS: readonly SimTuningKey[] = ['MAX_PULL_PX', 'MIN_PULL_PX'];
+/**
+ * R3: the pull cap and dead zone are validated by the server with the fixed constants, so they are never tunable.
+ * R20: the magnet limits are validation bounds read from constants.ts when a course is decoded, not live tunables.
+ */
+export const EXCLUDED_TUNING_KEYS: readonly SimTuningKey[] = [
+  'MAX_PULL_PX', 'MIN_PULL_PX', 'MAGNET_MIN_STRENGTH', 'MAGNET_MAX_STRENGTH', 'MAGNET_MIN_RADIUS', 'MAGNET_MAX_RADIUS',
+];
 
-export type DevTuningKey = Exclude<SimTuningKey, 'MAX_PULL_PX' | 'MIN_PULL_PX'>;
+export type DevTuningKey = Exclude<SimTuningKey,
+  'MAX_PULL_PX' | 'MIN_PULL_PX' | 'MAGNET_MIN_STRENGTH' | 'MAGNET_MAX_STRENGTH' | 'MAGNET_MIN_RADIUS' | 'MAGNET_MAX_RADIUS'>;
 
 /** Every tunable that gets a slider, in constants.ts order. */
 export const DEV_TUNING_KEYS: readonly DevTuningKey[] = SIM_TUNING_KEYS.filter(
   (k): k is DevTuningKey => !EXCLUDED_TUNING_KEYS.includes(k),
 );
 
-export type TuningGroup = 'shot' | 'collision' | 'surfaces' | 'objects' | 'magnetLimits';
-export const TUNING_GROUPS: readonly TuningGroup[] = ['shot', 'collision', 'surfaces', 'objects', 'magnetLimits'];
+export type TuningGroup = 'shot' | 'collision' | 'surfaces' | 'objects';
+export const TUNING_GROUPS: readonly TuningGroup[] = ['shot', 'collision', 'surfaces', 'objects'];
 
 export interface SliderSpec { group: TuningGroup; min: number; max: number; step: number }
 
@@ -77,11 +83,6 @@ export const SLIDER_SPECS: Readonly<Record<DevTuningKey, SliderSpec>> = {
   MAGNET_DEFAULT_STRENGTH: { group: 'objects', min: 50, max: 500, step: 10 },
   MAGNET_DEFAULT_RADIUS: { group: 'objects', min: 30, max: 240, step: 5 },
   MAGNET_DEAD_ZONE: { group: 'objects', min: 0, max: 10, step: 0.5 },
-
-  MAGNET_MIN_STRENGTH: { group: 'magnetLimits', min: 10, max: 200, step: 10 },
-  MAGNET_MAX_STRENGTH: { group: 'magnetLimits', min: 200, max: 600, step: 10 },
-  MAGNET_MIN_RADIUS: { group: 'magnetLimits', min: 10, max: 100, step: 5 },
-  MAGNET_MAX_RADIUS: { group: 'magnetLimits', min: 100, max: 400, step: 10 },
 };
 
 /** Keys of one group in constants.ts order. */
@@ -310,7 +311,6 @@ function createDevScreen(): Screen {
       const groups: HTMLElement[] = [];
       for (const g of TUNING_GROUPS) {
         const section = el('section', { class: 'card stack dev-group' }, el('h3', {}, t(`dev.group.${g}`)));
-        if (g === 'magnetLimits') section.append(el('p', { class: 'field__hint' }, t('dev.group.magnetLimits.hint')));
         for (const k of keysOfGroup(g)) {
           const spec = SLIDER_SPECS[k];
           const range = el('input', { type: 'range', class: 'dev-range', min: String(spec.min), max: String(spec.max), step: String(spec.step), id: `dev_${k}` });

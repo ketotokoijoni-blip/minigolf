@@ -25,16 +25,17 @@ describe('dev dictionaries', () => {
     for (const k of Object.keys(fiDev)) expect(params(enDev[k]!), k).toEqual(params(fiDev[k]!));
   });
 
-  it('describes every tunable except the R3-excluded pull cap and dead zone', () => {
+  it('describes every tunable except the R3-excluded pull cap/dead zone and the R20-excluded magnet limits', () => {
+    const excluded = ['MAX_PULL_PX', 'MIN_PULL_PX', 'MAGNET_MIN_STRENGTH', 'MAGNET_MAX_STRENGTH', 'MAGNET_MIN_RADIUS', 'MAGNET_MAX_RADIUS'];
     for (const k of SIM_TUNING_KEYS) {
-      if (k === 'MAX_PULL_PX' || k === 'MIN_PULL_PX') {
+      if (excluded.includes(k)) {
         expect(fiDev[`dev.key.${k}`], k).toBeUndefined();
         continue;
       }
       expect(fiDev[`dev.key.${k}`], k).toBeTypeOf('string');
       expect(enDev[`dev.key.${k}`], k).toBeTypeOf('string');
     }
-    for (const g of ['shot', 'collision', 'surfaces', 'objects', 'magnetLimits']) expect(fiDev[`dev.group.${g}`], g).toBeTypeOf('string');
+    for (const g of ['shot', 'collision', 'surfaces', 'objects']) expect(fiDev[`dev.group.${g}`], g).toBeTypeOf('string');
   });
 
   it('registers at import and interpolates', () => {

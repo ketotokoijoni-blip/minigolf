@@ -19,15 +19,13 @@ export const enDev: Dict = {
   'dev.changed': '{count} values changed',
   'dev.changed.none': 'All values are defaults',
   'dev.default': 'default {value}',
-  'dev.excluded': 'MAX_PULL_PX and MIN_PULL_PX are not tunable (the server validates shots with the fixed values, R3).',
+  'dev.excluded': 'MAX_PULL_PX and MIN_PULL_PX are not tunable (the server validates shots with the fixed values, R3). MAGNET_MIN/MAX_STRENGTH and MAGNET_MIN/MAX_RADIUS are course validation limits, not tunables (R20).',
   'dev.game.failed': 'The game could not be started.',
 
   'dev.group.shot': 'Shot',
   'dev.group.collision': 'Collision',
   'dev.group.surfaces': 'Surfaces',
   'dev.group.objects': 'Objects',
-  'dev.group.magnetLimits': 'Magnet limits',
-  'dev.group.magnetLimits.hint': 'The limits are read straight from constants.ts when a course is decoded, so these sliders do not affect play until the code changes. They are included in the copied snippet.',
 
   'dev.key.POWER_SCALE': 'Launch speed px/s per px of pull (120 px pull → MAX = 120 × this)',
   'dev.key.MAX_SPEED': 'Hard speed cap px/s (above 900 the ball may tunnel through walls)',
@@ -61,10 +59,6 @@ export const enDev: Dict = {
   'dev.key.MINE_TRIGGER_RADIUS': 'Mine trigger radius px',
   'dev.key.MAGNET_DEFAULT_STRENGTH': 'Default magnet strength px/s² (new magnet in the editor)',
   'dev.key.MAGNET_DEFAULT_RADIUS': 'Default magnet radius px',
-  'dev.key.MAGNET_MIN_STRENGTH': 'Smallest allowed magnet strength',
-  'dev.key.MAGNET_MAX_STRENGTH': 'Largest allowed magnet strength (R12: above ~600 the ball never rests)',
-  'dev.key.MAGNET_MIN_RADIUS': 'Smallest allowed magnet radius',
-  'dev.key.MAGNET_MAX_RADIUS': 'Largest allowed magnet radius',
   'dev.key.MAGNET_DEAD_ZONE': 'Distance px from the magnet centre with no force',
 };
 

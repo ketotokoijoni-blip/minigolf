@@ -253,13 +253,6 @@ class TestClient {
 
 const isEvent = (type: GameEvent['type']) => (m: ServerMessage): m is Extract<ServerMessage, { t: 'event' }> => m.t === 'event' && m.ev.type === type;
 
-/** The snapshot without its event counter (see the rejoin test for why the rejoiner's counter may run ahead). */
-function withoutSeq(json: GameStateJson): Omit<GameStateJson, 'seq'> {
-  const copy: Partial<GameStateJson> = { ...json };
-  delete copy.seq;
-  return copy as Omit<GameStateJson, 'seq'>;
-}
-
 // ---------------------------------------------------------------------------------------------------------------------
 // Scripted shots: the solvability fixture (WP-K, seeded from WP-B's playability probe) gives the b_01 ace; the other
 // two players get sequences derived from it so the hole exercises more than one shot per player.
@@ -509,22 +502,16 @@ describe('real server on port 0: three ws clients play one hole of b_01', () => 
     expect(rejoined.role).toBe('player');
     expect(rejoined.sessionToken).toBe(b.sessionToken);
     await Promise.all([a, c].map((cl) => cl.waitFor(connection(b.playerId, true))));
-    // The snapshot already shows connected: true; b2's own copy of the event follows roomJoined (§6.4 ordering).
+    // The snapshot predates connection(true) (R20); b2 reduces the playerConnection{true} frame that follows roomJoined
+    // exactly like every other client, so its state (seq included) equals the server's and the others'.
     await b2.waitFor(connection(b.playerId, true));
     expect(a.state!.players.find((p) => p.id === b.playerId)!.connected).toBe(true);
-    // Known WP-F deviation (reported to the lead, confirmed by review): the rejoiner also receives its own deferred
-    // playerConnection{true} AFTER a snapshot that already reflects it (Room.broadcast queues it while `deferred` is
-    // set and roomJoinedFor() is taken after authority.connection(true)), so its `seq` runs one ahead of the server
-    // and the other clients. Every other field is identical; `seq` is a debugging counter (§5.5) that no client logic
-    // reads. Once WP-F stops queueing the rejoiner's own copies (or snapshots before the event), tighten this to
-    // `expect(b2.state!.seq).toBe(a.state!.seq)` and drop withoutSeq() here and in the leave test below.
-    expect(withoutSeq(b2.stateJson())).toEqual(withoutSeq(a.stateJson()));
-    expect(b2.state!.seq - a.state!.seq).toBeGreaterThanOrEqual(0);
-    expect(b2.state!.seq - a.state!.seq).toBeLessThanOrEqual(1);
+    expect(b2.stateJson()).toEqual(a.stateJson());
+    expect(b2.state!.seq).toBe(a.state!.seq);
     expect(c.stateJson()).toEqual(a.stateJson());
     b2.send({ t: 'requestSnapshot' });
     const snap = await b2.waitFor((m): m is Extract<ServerMessage, { t: 'roomState' }> => m.t === 'roomState');
-    expect(withoutSeq(JSON.parse(JSON.stringify(snap.state)) as GameStateJson)).toEqual(withoutSeq(JSON.parse(JSON.stringify(b2.stateJson())) as GameStateJson));
+    expect(JSON.parse(JSON.stringify(snap.state)) as GameStateJson).toEqual(JSON.parse(JSON.stringify(b2.stateJson())) as GameStateJson);
     expect(snap.state.seq).toBe(a.state!.seq);
     expect(await (await fetch(`${srv.httpBase}/api/stats`)).json()).toMatchObject({ rooms: 1, players: 3, spectators: 0 });
   });
@@ -535,7 +522,7 @@ describe('real server on port 0: three ws clients play one hole of b_01', () => 
     await c.waitFor((m) => m.t === 'roomLeft');
     await Promise.all([a, b2].map((cl) => cl.waitFor((m) => isEvent('playerLeft')(m) && m.ev.type === 'playerLeft' && m.ev.playerId === c.playerId)));
     expect(a.state!.players.map((p) => p.name)).toEqual([a.name, b2.name]);
-    expect(withoutSeq(b2.stateJson())).toEqual(withoutSeq(a.stateJson()));
+    expect(b2.stateJson()).toEqual(a.stateJson());
     b2.send({ t: 'leaveRoom' });
     await b2.waitFor((m) => m.t === 'roomLeft');
     await a.waitFor((m) => isEvent('playerLeft')(m) && m.ev.type === 'playerLeft' && m.ev.playerId === b2.playerId);
