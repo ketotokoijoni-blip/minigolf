@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { BALL_RADIUS, DT, FORCED_STOP_TICKS, MAGNET_DEAD_ZONE, MAX_SHOT_TICKS } from '../constants';
+import { BALL_RADIUS, DT, FORCED_STOP_TICKS, MAGNET_DEAD_ZONE, MAGNET_MAX_STRENGTH, MAX_SHOT_TICKS, STOP_SPEED } from '../constants';
 import type { Polarity } from '../course/types';
 import { applyMagnets } from './objects';
 import { simulateShot } from './simulate';
@@ -11,11 +11,11 @@ afterEach(() => resetSimTuning());
 
 const C = { x: 367.5, y: 187.5 }; // tile (24, 12)
 
-function magnetCourse(polarity: Polarity | 0) {
+function magnetCourse(polarity: Polarity | 0, strength: number = 350) {
   const w = borderRows();
   paint(w, 24, 12, '#');
   const objects = [start(3, 12)];
-  if (polarity !== 0) objects.push(magnet(24, 12, polarity, 350, 90));
+  if (polarity !== 0) objects.push(magnet(24, 12, polarity, strength, 90));
   return buildLayers(blankRows('.'), w, objects);
 }
 
@@ -91,10 +91,29 @@ describe('magnet', () => {
     expect(o.ball.vx).toBe(0);
   });
 
-  // Contract gap reported to the lead (not fixable in WP-B files): constants.ts allows MAGNET_MAX_STRENGTH = 1200, but
-  // at contact distance (R + TILE/2 = 13.5 px, radius 90) any attract strength above ~550 px/s^2 adds more than
-  // STOP_SPEED per tick, so the §8.3 forced-stop rule never sees FORCED_STOP_TICKS consecutive slow ticks and such a
-  // shot runs to the 30 s cap. Either MAGNET_MAX_STRENGTH drops to <= ~500 or §5.4/§8.3 gain a displacement-based
-  // wedge test. The todo below becomes a real test once the lead has ruled.
-  it.todo('a slow ball pulled against an attracting block of MAGNET_MAX_STRENGTH rests through the forced-stop rule');
+  // R12: MAGNET_MAX_STRENGTH was lowered from 1200 to 500 because at contact distance (R + TILE/2 = 13.5 px, radius
+  // 90) an attract strength above ~550 px/s^2 adds more than STOP_SPEED per tick, so the forced-stop rule could never
+  // see FORCED_STOP_TICKS consecutive slow ticks. At the new maximum the per-tick gain at contact is below STOP_SPEED.
+  it('a slow ball pulled against an attracting block of MAGNET_MAX_STRENGTH rests through the forced-stop rule', () => {
+    const contact = BALL_RADIUS + 7.5; // centre distance when pressed against the block face
+    const gainPerTick = MAGNET_MAX_STRENGTH * (1 - contact / 90) * DT;
+    expect(gainPerTick).toBeLessThan(STOP_SPEED); // the precondition R12 relies on
+
+    const layers = magnetCourse(1, MAGNET_MAX_STRENGTH);
+    expect(layers.magnets[0]?.strength).toBe(MAGNET_MAX_STRENGTH);
+    const o = simulateShot(layers, freshWorld(layers), createBallAt({ x: 307.5, y: 187.5 }), shotFor(100, 0));
+    expect(o.result).toBe('stopped');
+    expect(o.ticks).toBeGreaterThanOrEqual(FORCED_STOP_TICKS);
+    expect(o.ticks).toBeLessThan(MAX_SHOT_TICKS / 6); // "well before" the 30 s cap: under 5 s
+    expect(Math.abs(o.ball.x - (360 - BALL_RADIUS))).toBeLessThan(1);
+    expect(o.ball.y).toBe(187.5);
+    expect(o.ball.slowTicks).toBeGreaterThanOrEqual(FORCED_STOP_TICKS);
+    expect(o.ball.vx).toBe(0);
+    expect(o.ball.vy).toBe(0);
+
+    // the same from a dead start right at the block face (worst case for the stop rule: no approach speed to shed)
+    const pressed = simulateShot(layers, freshWorld(layers), createBallAt({ x: 360 - BALL_RADIUS - 0.5, y: 187.5 }), shotFor(-20, 0));
+    expect(pressed.result).toBe('stopped');
+    expect(pressed.ticks).toBeLessThan(MAX_SHOT_TICKS / 6);
+  });
 });

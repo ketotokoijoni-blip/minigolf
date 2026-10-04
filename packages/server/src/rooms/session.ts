@@ -3,6 +3,7 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { MAX_NAME_CHARS, DEFAULT_PLAYER_NAME } from '@puttipeli/shared/constants';
 import type { PlayerColour } from '@puttipeli/shared/game/types';
+import { ErrorCode } from '@puttipeli/shared/protocol/codes';
 import { MAX_CHAT_CHARS, SESSION_TOKEN_BYTES } from '@puttipeli/shared/protocol/limits';
 
 /** 128-bit random token as 32 hex chars. */
@@ -80,4 +81,32 @@ export function pickHost(players: readonly HostCandidate[]): string | null {
   if (connected.length > 0) return connected[0]!.id;
   const any = alive.sort(bySeq);
   return any.length > 0 ? any[0]!.id : null;
+}
+
+/** English developer strings for `error.message` (clients localize by code, §6.4). */
+export function errorMessage(code: ErrorCode): string {
+  switch (code) {
+    case ErrorCode.BAD_VERSION: return 'Protocol or simulation version mismatch';
+    case ErrorCode.INVALID_MESSAGE: return 'Malformed message';
+    case ErrorCode.RATE_LIMITED: return 'Too many messages';
+    case ErrorCode.SERVER_FULL: return 'The server has no free room slots';
+    case ErrorCode.ROOM_NOT_FOUND: return 'No room with that code';
+    case ErrorCode.ROOM_FULL: return 'The room is full';
+    case ErrorCode.NAME_TAKEN: return 'That name is already used in the room';
+    case ErrorCode.NOT_IN_ROOM: return 'Not in a room';
+    case ErrorCode.ALREADY_IN_ROOM: return 'Already in a room; leave it first';
+    case ErrorCode.NOT_HOST: return 'Only the host can do that';
+    case ErrorCode.NOT_IN_LOBBY: return 'Allowed in the lobby only';
+    case ErrorCode.GAME_IN_PROGRESS: return 'A game is in progress';
+    case ErrorCode.NOT_ENOUGH_PLAYERS: return 'Not enough connected players to start';
+    case ErrorCode.PLAYERS_NOT_READY: return 'Every player must be ready';
+    case ErrorCode.NOT_A_PLAYER: return 'Spectators cannot do that';
+    case ErrorCode.NOT_YOUR_TURN: return 'It is not your turn';
+    case ErrorCode.STALE_TURN: return 'The turn has already changed';
+    case ErrorCode.SHOT_IN_FLIGHT: return 'A shot is already in flight';
+    case ErrorCode.INVALID_SHOT: return 'Invalid shot vector';
+    case ErrorCode.INVALID_COURSE: return 'Invalid course selection';
+    case ErrorCode.SESSION_EXPIRED: return 'The session is no longer valid';
+    default: return code;
+  }
 }

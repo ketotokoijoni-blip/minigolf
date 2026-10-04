@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MAX_COURSE_BYTES } from '../protocol/limits';
-import { hasValidationErrors, validateCourse } from './validate';
+import { VALIDATION_ERROR_CODES, VALIDATION_WARNING_CODES, hasValidationErrors, validateCourse } from './validate';
 import type { Course, CourseObject, ValidationIssue } from './types';
 import { putChar, putRect, testCourse } from './fixtures.test';
 
@@ -59,6 +59,28 @@ describe('validateCourse errors', () => {
     expect(errors(testCourse([...SH, { type: 'mine', x: 3.5, y: 3 }]))).toContain('OBJECT_OUT_OF_BOUNDS');
     expect(errors(testCourse([...SH, { type: 'mine', x: Number.NaN, y: 3 }]))).toContain('OBJECT_OUT_OF_BOUNDS');
     expect(errors(testCourse([...SH, { type: 'mine', x: 1, y: 1 }]))).not.toContain('OBJECT_OUT_OF_BOUNDS');
+  });
+
+  it('object issues carry x/y only as finite numbers; raw coordinates (or ?) go to params', () => {
+    // A tampered Course (not via parseCourseFile) may have a string or NaN coordinate on a known object type.
+    const nan = find(testCourse([...SH, { type: 'mine', x: Number.NaN, y: 3 }]), 'OBJECT_OUT_OF_BOUNDS');
+    expect(nan).toMatchObject({ objectIndex: 2, y: 3, params: { x: '?', y: 3 } });
+    expect(nan).not.toHaveProperty('x');
+    const str = find(testCourse([...SH, { type: 'mine', x: 'a' as unknown as number, y: 'b' as unknown as number }]), 'OBJECT_OUT_OF_BOUNDS');
+    expect(str).toMatchObject({ objectIndex: 2, params: { x: '?', y: '?' } });
+    expect(str).not.toHaveProperty('x');
+    expect(str).not.toHaveProperty('y');
+    const inf = find(testCourse([...SH, { type: 'mine', x: Number.POSITIVE_INFINITY, y: 2 }]), 'OBJECT_OUT_OF_BOUNDS');
+    expect(inf).toMatchObject({ y: 2, params: { x: '?', y: 2 } });
+    expect(inf).not.toHaveProperty('x');
+    // Every object issue, including the in-bounds ones, satisfies the number-typed contract and carries params.
+    const okCoords = validateCourse(testCourse([...SH, { type: 'mine', x: 45, y: 12 }, { type: 'mine', x: 3.5, y: 3 }]));
+    for (const issue of okCoords.filter((i) => i.objectIndex !== undefined)) {
+      if (issue.x !== undefined) expect(Number.isFinite(issue.x)).toBe(true);
+      if (issue.y !== undefined) expect(Number.isFinite(issue.y)).toBe(true);
+    }
+    expect(find(testCourse([...SH, { type: 'mine', x: 45, y: 12 }]), 'OBJECT_OVERLAP')).toMatchObject({ x: 45, y: 12, params: { x: 45, y: 12 } });
+    expect(find(testCourse([...SH, { type: 'mine', x: 3.5, y: 3 }]), 'OBJECT_OUT_OF_BOUNDS')).toMatchObject({ x: 3.5, y: 3, params: { x: 3.5, y: 3 } });
   });
 
   it('OBJECT_OVERLAP', () => {
@@ -209,13 +231,73 @@ describe('validateCourse warnings', () => {
 });
 
 describe('validateCourse structure of direct Course objects (not via parseCourseFile)', () => {
-  it('BAD_STRUCTURE for an unknown object type or a non-object entry, so decodeLayers never sees them', () => {
+  it('BAD_OBJECT_TYPE (params x, y) for an unknown object type; BAD_STRUCTURE for a non-object entry (R14)', () => {
     const c = testCourse();
     const unknown = { ...c, objects: [...c.objects, { type: 'portal', x: 10, y: 10 } as unknown as CourseObject] };
-    expect(errors(unknown)).toContain('BAD_STRUCTURE');
-    expect(find(unknown, 'BAD_STRUCTURE')).toMatchObject({ level: 'error', objectIndex: 2 });
+    expect(errors(unknown)).toContain('BAD_OBJECT_TYPE');
+    expect(errors(unknown)).not.toContain('BAD_STRUCTURE');
+    expect(find(unknown, 'BAD_OBJECT_TYPE')).toMatchObject({ level: 'error', objectIndex: 2, x: 10, y: 10, params: { x: 10, y: 10 } });
+    // A missing type or a non-string type is still an unknown type; non-numeric coordinates become '?' in params.
+    const noType = { ...c, objects: [...c.objects, { x: 4, y: 'five' } as unknown as CourseObject] };
+    expect(find(noType, 'BAD_OBJECT_TYPE')).toMatchObject({ objectIndex: 2, x: 4, params: { x: 4, y: '?' } });
+    expect(find(noType, 'BAD_OBJECT_TYPE')?.y).toBeUndefined();
     const nul = { ...c, objects: [...c.objects, null as unknown as CourseObject] };
     expect(find(nul, 'BAD_STRUCTURE')).toMatchObject({ level: 'error', objectIndex: 2 });
+    expect(errors(nul)).not.toContain('BAD_OBJECT_TYPE');
+    // The valid objects around the bad entry are still checked (positive case: no other spurious errors).
+    expect(errors(unknown)).toEqual(['BAD_OBJECT_TYPE']);
+    expect(errors(c)).not.toContain('BAD_OBJECT_TYPE');
     expect(errors(c)).not.toContain('BAD_STRUCTURE');
+    // decodeLayers never sees it: the validated-course precondition holds because the issue is an error.
+    expect(hasValidationErrors(validateCourse(unknown))).toBe(true);
+  });
+});
+
+describe('validation code lists', () => {
+  it('cover the §7.5 table plus BAD_OBJECT_TYPE and BAD_STRUCTURE, with no duplicates', () => {
+    const table = [
+      'BAD_DIMENSIONS', 'BAD_CHAR', 'NO_START', 'MULTIPLE_STARTS', 'NO_HOLE', 'OBJECT_OUT_OF_BOUNDS', 'OBJECT_OVERLAP',
+      'OBJECT_ON_WALL', 'MAGNET_NOT_ON_FULL', 'OBJECT_ON_HAZARD', 'TELEPORT_GROUP_SIZE', 'BAD_TELEPORT_GROUP', 'BAD_MAGNET',
+      'BAD_RULES', 'BAD_NAME', 'BAD_AUTHOR', 'BAD_DESCRIPTION', 'TOO_LARGE',
+    ];
+    expect([...VALIDATION_ERROR_CODES].sort()).toEqual([...table, 'BAD_OBJECT_TYPE', 'BAD_STRUCTURE'].sort());
+    expect(new Set(VALIDATION_ERROR_CODES).size).toBe(VALIDATION_ERROR_CODES.length);
+    expect([...VALIDATION_WARNING_CODES].sort()).toEqual(['HOLE_NEXT_TO_START', 'OPEN_BORDER', 'PAR_HIGH', 'UNREACHABLE_HOLE']);
+  });
+
+  it('every code the validator emits for a battery of broken courses is in the lists, and the battery reaches every code', () => {
+    const c = testCourse();
+    const all = new Set<string>([...VALIDATION_ERROR_CODES, ...VALIDATION_WARNING_CODES]);
+    const sealed = c.walls.map((row, y) => (y >= 1 && y <= 23 ? row.slice(0, 40) + '#' + row.slice(41) : row));
+    const broken: Course[] = [
+      { ...c, width: 48 as 49 },
+      { ...c, surface: putChar(c.surface, 5, 5, 'Q') },
+      testCourse([{ type: 'hole', x: 45, y: 12 }]),
+      testCourse([...SH, { type: 'start', x: 5, y: 5 }]),
+      testCourse([{ type: 'start', x: 3, y: 12 }]),
+      testCourse([...SH, { type: 'mine', x: 49, y: 0 }]),
+      testCourse([...SH, { type: 'mine', x: 45, y: 12 }]),
+      testCourse([...SH, { type: 'mine', x: 0, y: 0 }]),
+      testCourse([...SH, { type: 'magnet', x: 10, y: 10, polarity: 1, strength: 300, radius: 60 }]),
+      { ...testCourse([...SH, { type: 'mine', x: 10, y: 10 }]), surface: putChar(c.surface, 10, 10, 'w') },
+      testCourse([...SH, { type: 'teleport', x: 10, y: 10, group: 0 }]),
+      testCourse([...SH, { type: 'teleport', x: 10, y: 10, group: 9 as 0 }, { type: 'teleport', x: 11, y: 10, group: 9 as 0 }]),
+      { ...testCourse([...SH, { type: 'magnet', x: 10, y: 10, polarity: 2 as 1, strength: 300, radius: 60 }]), walls: putChar(c.walls, 10, 10, '#') },
+      { ...c, rules: { maxStrokes: 0, par: 3 } },
+      { ...c, rules: { maxStrokes: 20, par: 9 } },
+      { ...c, name: '' },
+      { ...c, author: 'a'.repeat(41) },
+      { ...c, description: 'a'.repeat(201) },
+      { ...c, objects: [...c.objects, { type: 'portal', x: 1, y: 1 } as unknown as CourseObject] },
+      { ...c, objects: [...c.objects, null as unknown as CourseObject] },
+      { ...c, walls: putChar(c.walls, 0, 5, '.') },
+      { ...c, walls: sealed },
+      testCourse([{ type: 'start', x: 3, y: 12 }, { type: 'hole', x: 4, y: 12 }]),
+    ];
+    const seen = new Set<string>();
+    for (const b of broken) for (const i of validateCourse(b)) seen.add(i.code);
+    for (const code of seen) expect(all.has(code), code).toBe(true);
+    const missing = [...all].filter((code) => !seen.has(code));
+    expect(missing).toEqual([]);
   });
 });

@@ -1,38 +1,148 @@
-// DOM HUD bound to GameState (DESIGN §12.7). Phase 1 reads GameState fields directly; phase 2 swaps in WP-C
-// selectors/scoring where they exist. `update` may be called every frame, so it only touches DOM nodes whose
-// content changed.
-import type { GameState, PlayerState } from '@puttipeli/shared/game/types';
+// DOM HUD bound to GameState (DESIGN §12.7). Phase 2: all numbers come from WP-C selectors/scoring. The pure
+// `hudModel()` computes everything the HUD shows (tested in node without a DOM); `createHud().update()` only
+// writes the DOM nodes whose content changed, because the controller may call it every frame.
+import type { GameState, PlayerColour } from '@puttipeli/shared/game/types';
+import { currentCourse, isMyTurn, playerOf, strokesThisHole } from '@puttipeli/shared/game/selectors';
+import { totalStrokes } from '@puttipeli/shared/game/scoring';
 import { AFK_TURN_TIMEOUT_SEC, DISCONNECTED_TURN_WAIT_SEC } from '@puttipeli/shared/constants';
 import { el } from './components';
 import { t } from '../i18n/t';
+import { getSettings, onSettingsChange } from '../storage/settings';
 
 export interface Hud {
   root: HTMLElement;
   update(state: GameState, localPlayerId: string, nowAuthorityMs: number): void;
   setPower(power01: number | null): void;
   setLabel(text: string | null): void;
-  fireButton: HTMLButtonElement; /* hidden unless touch */
+  fireButton: HTMLButtonElement; /* hidden unless touch device AND the touchFireButton setting is on (§12.3) */
   destroy(): void;
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// Pure view model
+// ---------------------------------------------------------------------------------------------------------------
+
+export type ChipTag = '' | 'done' | 'left' | 'afk';
+
+export interface HudChipModel {
+  id: string;
+  name: string;
+  colour: PlayerColour;
+  isTurn: boolean;
+  isMe: boolean;
+  done: boolean;
+  left: boolean;
+  host: boolean;
+  /** Strokes on the current hole as text, '' outside a round. */
+  strokes: string;
+  tag: ChipTag;
+  offline: boolean;
+  afk: boolean;
+}
+
+export interface HudTimerModel { fraction: number; secondsLeft: number; urgent: boolean }
+
+export interface HudModel {
+  /** Course name, '' outside a hole. */
+  title: string;
+  inRound: boolean;
+  hole: string;      // "3/9"
+  par: string;
+  strokes: string;   // local player's strokes this hole, '–' for spectators
+  strokesOver: boolean;
+  total: string;
+  chips: HudChipModel[];
+  turnText: string;
+  /** Seconds left of the countdown, null outside the countdown phase. */
+  countdownSec: number | null;
+  /** Turn timer; null when the turn has no deadline. */
+  timer: HudTimerModel | null;
+  canFire: boolean;
+}
+
+const ROUND_PHASES: readonly GameState['phase'][] = ['hole', 'holeSummary', 'roundSummary'];
+
+/** Everything the HUD displays, derived from the state with WP-C selectors/scoring. */
+export function hudModel(state: GameState, localPlayerId: string, nowAuthorityMs: number): HudModel {
+  const course = currentCourse(state);
+  const inRound = ROUND_PHASES.includes(state.phase);
+  const turnId = state.turn?.playerId ?? null;
+  // A spectator is anyone outside the roster: the empty id of a pure watcher as well as an unknown (own) id.
+  const spectator = playerOf(state, localPlayerId) === null;
+  const mine = spectator ? 0 : strokesThisHole(state, localPlayerId);
+
+  const chips: HudChipModel[] = state.players.map((p) => {
+    const done = state.holeDone[p.id] === true;
+    const tag: ChipTag = p.leftRound ? 'left' : done && state.phase === 'hole' ? 'done' : p.afk ? 'afk' : '';
+    return {
+      id: p.id,
+      name: p.name,
+      colour: p.colour,
+      isTurn: state.phase === 'hole' && p.id === turnId,
+      isMe: p.id === localPlayerId,
+      done: inRound && done,
+      left: p.leftRound,
+      host: p.id === state.hostId,
+      strokes: inRound && course ? String(strokesThisHole(state, p.id)) : '',
+      tag,
+      offline: !p.connected,
+      afk: p.connected && p.afk,
+    };
+  });
+
+  let turnText = '';
+  if (state.phase === 'hole' && state.turn) {
+    const onTurn = playerOf(state, state.turn.playerId);
+    if (state.turn.shotInFlight) turnText = t('hud.shotInFlight');
+    else if (state.turn.playerId === localPlayerId) turnText = t('hud.yourTurn');
+    else turnText = t('hud.turn', { name: onTurn?.name ?? '?' });
+  } else if (state.phase === 'holeSummary') turnText = t('hud.holeSummary');
+  else if (state.phase === 'roundSummary') turnText = t('hud.roundSummary');
+  else if (state.phase === 'lobby') turnText = t('hud.lobby');
+  if (spectator && inRound) turnText = `${t('hud.spectating')} · ${turnText}`;
+
+  const countdownSec = state.phase === 'countdown' && state.countdownEndsAtMs !== null
+    ? Math.max(0, Math.ceil((state.countdownEndsAtMs - nowAuthorityMs) / 1000))
+    : null;
+
+  let timer: HudTimerModel | null = null;
+  const deadline = state.phase === 'hole' ? state.turn?.deadlineMs ?? null : null;
+  if (deadline !== null && state.turn) {
+    const onTurn = playerOf(state, state.turn.playerId);
+    const durationSec = onTurn && !onTurn.connected
+      ? DISCONNECTED_TURN_WAIT_SEC
+      : onTurn?.afk ? AFK_TURN_TIMEOUT_SEC : state.settings.turnTimeoutSec || DISCONNECTED_TURN_WAIT_SEC;
+    const remainMs = Math.max(0, deadline - nowAuthorityMs);
+    timer = {
+      fraction: Math.min(1, remainMs / (durationSec * 1000)),
+      secondsLeft: Math.ceil(remainMs / 1000),
+      urgent: remainMs <= 5000,
+    };
+  }
+
+  return {
+    title: course ? course.name : '',
+    inRound: inRound && course !== null,
+    hole: course ? `${state.holeIndex + 1}/${state.courses.length}` : '',
+    par: course ? String(course.rules.par) : '',
+    strokes: course ? (spectator ? '–' : String(mine)) : '',
+    strokesOver: course !== null && !spectator && mine > course.rules.par,
+    total: course ? (spectator ? '–' : String(totalStrokes(state, localPlayerId))) : '',
+    chips,
+    turnText,
+    countdownSec,
+    timer,
+    canFire: !spectator && isMyTurn(state, localPlayerId),
+  };
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// DOM
+// ---------------------------------------------------------------------------------------------------------------
+
 const setText = (node: HTMLElement, text: string): void => { if (node.textContent !== text) node.textContent = text; };
 const setClass = (node: HTMLElement, cls: string, on: boolean): void => { if (node.classList.contains(cls) !== on) node.classList.toggle(cls, on); };
-
-/** Sum of strokes >= 0 (phase 2: scoring.totalStrokes). */
-export function totalStrokesOf(state: GameState, playerId: string): number {
-  const arr = state.strokes[playerId];
-  if (!arr) return 0;
-  let sum = 0;
-  for (const s of arr) if (s >= 0) sum += s;
-  return sum;
-}
-
-/** Strokes on the current hole, 0 when not started (phase 2: selectors.strokesThisHole). */
-export function strokesThisHoleOf(state: GameState, playerId: string): number {
-  if (state.holeIndex < 0) return 0;
-  const s = state.strokes[playerId]?.[state.holeIndex] ?? -1;
-  return s < 0 ? 0 : s;
-}
+const setHidden = (node: HTMLElement, hidden: boolean): void => { if (node.hidden !== hidden) node.hidden = hidden; };
 
 function isTouchDevice(): boolean {
   try {
@@ -42,7 +152,9 @@ function isTouchDevice(): boolean {
   }
 }
 
-interface Chip { root: HTMLElement; name: HTMLElement; strokes: HTMLElement; status: HTMLElement; tag: HTMLElement }
+interface Chip { root: HTMLElement; strokes: HTMLElement; status: HTMLElement; tag: HTMLElement }
+
+const tagText = (tag: ChipTag): string => (tag === 'left' ? t('hud.left') : tag === 'done' ? t('hud.done') : tag === 'afk' ? t('hud.afk') : '');
 
 export function createHud(container: HTMLElement): Hud {
   // Top row: course title + stats + label + timer
@@ -70,7 +182,12 @@ export function createHud(container: HTMLElement): Hud {
     powerFill,
     ...[25, 50, 75].map((p) => { const tick = el('div', { class: 'power__tick' }); tick.style.left = `${p}%`; return tick; }));
   const fireButton = el('button', { type: 'button', class: 'btn btn--primary hud__fire' }, t('hud.fire'));
-  fireButton.hidden = !isTouchDevice();
+  // §12.3: on touch the Lyö button fires only while the touchFireButton setting is on; with it off, input.ts fires on
+  // pointer release and the button would be redundant. Followed live so a settings change needs no remount.
+  const touch = isTouchDevice();
+  const applyFireVisibility = (touchFireButton: boolean): void => { fireButton.hidden = !(touch && touchFireButton); };
+  applyFireVisibility(getSettings().touchFireButton);
+  const offSettings = onSettingsChange((s) => applyFireVisibility(s.touchFireButton));
   const countdown = el('span', { class: 'hud__countdown', hidden: true });
   const bottom = el('div', { class: 'hud__bottom' }, turnText, countdown, power, fireButton);
 
@@ -80,19 +197,20 @@ export function createHud(container: HTMLElement): Hud {
   const chips = new Map<string, Chip>();
   let chipSignature = '';
 
-  const buildChips = (list: PlayerState[], hostId: string | null): void => {
+  const buildChips = (list: HudChipModel[]): void => {
     players.replaceChildren();
     chips.clear();
-    for (const p of list) {
+    for (const c of list) {
       const dot = el('span', { class: 'chip__dot' });
-      dot.style.setProperty('--player-colour', `var(--player-${p.colour})`);
-      const name = el('span', { class: 'chip__name' }, p.name);
+      dot.style.setProperty('--player-colour', `var(--player-${c.colour})`);
+      const name = el('span', { class: 'chip__name' }, c.name);
       const strokes = el('span', { class: 'chip__strokes' });
       const status = el('span', { class: 'chip__status' });
       const tag = el('span', { class: 'chip__tag' });
-      const root = el('span', { class: 'chip', role: 'listitem', title: p.id === hostId ? t('hud.host') : '' }, dot, name, strokes, tag, status);
-      chips.set(p.id, { root, name, strokes, status, tag });
-      players.append(root);
+      const chipRoot = el('span', { class: 'chip', role: 'listitem', title: c.host ? t('hud.host') : '' }, dot, name, strokes, tag, status);
+      if (c.host) chipRoot.append(el('span', { class: 'chip__crown', 'aria-hidden': 'true' }, '♛'));
+      chips.set(c.id, { root: chipRoot, strokes, status, tag });
+      players.append(chipRoot);
     }
   };
 
@@ -103,75 +221,51 @@ export function createHud(container: HTMLElement): Hud {
     fireButton,
 
     update(state, localPlayerId, nowAuthorityMs) {
-      const course = state.holeIndex >= 0 ? state.courses[state.holeIndex] ?? null : null;
-      const inRound = state.phase === 'hole' || state.phase === 'holeSummary' || state.phase === 'roundSummary';
+      const m = hudModel(state, localPlayerId, nowAuthorityMs);
 
-      // Stats
-      setText(title, course ? course.name : '');
-      stats.hidden = !inRound || !course;
-      if (course) {
-        setText(holeValue, `${state.holeIndex + 1}/${state.courses.length}`);
-        setText(parValue, String(course.rules.par));
-        const mine = strokesThisHoleOf(state, localPlayerId);
-        setText(strokesValue, localPlayerId ? String(mine) : '–');
-        setClass(strokesValue, 'is-over', mine > course.rules.par);
-        setText(totalValue, localPlayerId ? String(totalStrokesOf(state, localPlayerId)) : '–');
+      setText(title, m.title);
+      setHidden(stats, !m.inRound);
+      if (m.inRound) {
+        setText(holeValue, m.hole);
+        setText(parValue, m.par);
+        setText(strokesValue, m.strokes);
+        setClass(strokesValue, 'is-over', m.strokesOver);
+        setText(totalValue, m.total);
       }
 
-      // Chips (rebuild only when the roster changes)
-      const sig = state.players.map((p) => `${p.id}:${p.name}:${p.colour}`).join('|') + `#${state.hostId ?? ''}`;
-      if (sig !== chipSignature) { chipSignature = sig; buildChips(state.players, state.hostId); }
-      const turnId = state.turn?.playerId ?? null;
-      for (const p of state.players) {
-        const c = chips.get(p.id);
-        if (!c) continue;
-        setClass(c.root, 'is-turn', state.phase === 'hole' && p.id === turnId);
-        setClass(c.root, 'is-me', p.id === localPlayerId);
-        const done = state.holeDone[p.id] === true;
-        setClass(c.root, 'is-done', inRound && done);
-        setClass(c.root, 'is-left', p.leftRound);
-        setText(c.strokes, inRound && state.holeIndex >= 0 ? String(strokesThisHoleOf(state, p.id)) : '');
-        setText(c.tag, p.leftRound ? t('hud.left') : done && state.phase === 'hole' ? t('hud.done') : p.afk ? t('hud.afk') : '');
-        setClass(c.status, 'is-offline', !p.connected);
-        setClass(c.status, 'is-afk', p.connected && p.afk);
-        c.status.title = !p.connected ? t('hud.offline') : p.afk ? t('hud.afk') : '';
+      // Chips are rebuilt only when the roster (id, name, colour, host) changes.
+      const sig = m.chips.map((c) => `${c.id}:${c.name}:${c.colour}:${c.host ? 1 : 0}`).join('|');
+      if (sig !== chipSignature) { chipSignature = sig; buildChips(m.chips); }
+      for (const c of m.chips) {
+        const chip = chips.get(c.id);
+        if (!chip) continue;
+        setClass(chip.root, 'is-turn', c.isTurn);
+        setClass(chip.root, 'is-me', c.isMe);
+        setClass(chip.root, 'is-done', c.done);
+        setClass(chip.root, 'is-left', c.left);
+        setText(chip.strokes, c.strokes);
+        setText(chip.tag, tagText(c.tag));
+        setClass(chip.status, 'is-offline', c.offline);
+        setClass(chip.status, 'is-afk', c.afk);
+        const statusTitle = c.offline ? t('hud.offline') : c.afk ? t('hud.afk') : '';
+        if (chip.status.title !== statusTitle) chip.status.title = statusTitle;
       }
 
-      // Turn text
-      let turnMsg = '';
-      if (state.phase === 'hole' && state.turn) {
-        const onTurn = state.players.find((p) => p.id === state.turn!.playerId);
-        if (state.turn.shotInFlight) turnMsg = t('hud.shotInFlight');
-        else if (state.turn.playerId === localPlayerId) turnMsg = t('hud.yourTurn');
-        else turnMsg = t('hud.turn', { name: onTurn?.name ?? '?' });
-      } else if (state.phase === 'holeSummary') turnMsg = t('hud.holeSummary');
-      else if (state.phase === 'roundSummary') turnMsg = t('hud.roundSummary');
-      else if (state.phase === 'lobby') turnMsg = t('hud.lobby');
-      if (!localPlayerId && inRound) turnMsg = `${t('hud.spectating')} · ${turnMsg}`;
-      setText(turnText, turnMsg);
+      setText(turnText, m.turnText);
 
-      // Countdown
-      if (state.phase === 'countdown' && state.countdownEndsAtMs !== null) {
-        const s = Math.max(0, Math.ceil((state.countdownEndsAtMs - nowAuthorityMs) / 1000));
-        countdown.hidden = false;
-        setText(countdown, t('hud.countdown', { s }));
-      } else if (!countdown.hidden) countdown.hidden = true;
+      if (m.countdownSec !== null) {
+        setHidden(countdown, false);
+        setText(countdown, t('hud.countdown', { s: m.countdownSec }));
+      } else setHidden(countdown, true);
 
-      // Timer ring: only with a deadline
-      const deadline = state.phase === 'hole' ? state.turn?.deadlineMs ?? null : null;
-      if (deadline !== null && state.turn) {
-        const onTurn = state.players.find((p) => p.id === state.turn!.playerId);
-        const durationSec = onTurn && !onTurn.connected ? DISCONNECTED_TURN_WAIT_SEC : onTurn?.afk ? AFK_TURN_TIMEOUT_SEC : state.settings.turnTimeoutSec || DISCONNECTED_TURN_WAIT_SEC;
-        const remainMs = Math.max(0, deadline - nowAuthorityMs);
-        const frac = Math.min(1, remainMs / (durationSec * 1000));
-        timer.hidden = false;
-        timerRing.style.setProperty('--p', frac.toFixed(3));
-        setClass(timerRing, 'is-urgent', remainMs <= 5000);
-        setText(timerText, String(Math.ceil(remainMs / 1000)));
-      } else if (!timer.hidden) timer.hidden = true;
+      if (m.timer) {
+        setHidden(timer, false);
+        timerRing.style.setProperty('--p', m.timer.fraction.toFixed(3));
+        setClass(timerRing, 'is-urgent', m.timer.urgent);
+        setText(timerText, String(m.timer.secondsLeft));
+      } else setHidden(timer, true);
 
-      // Fire button is only meaningful on my turn
-      fireButton.disabled = !(state.phase === 'hole' && state.turn && state.turn.playerId === localPlayerId && !state.turn.shotInFlight);
+      if (fireButton.disabled === m.canFire) fireButton.disabled = !m.canFire;
     },
 
     setPower(power01) {
@@ -192,6 +286,7 @@ export function createHud(container: HTMLElement): Hud {
     },
 
     destroy() {
+      offSettings();
       root.remove();
       chips.clear();
     },

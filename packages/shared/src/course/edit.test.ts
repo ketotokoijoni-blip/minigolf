@@ -261,6 +261,36 @@ describe('fillRect / line: off-field geometry', () => {
     expect(surfAt(edge, 0, 1)).toBe(Surface.Grass);
   });
 
+  it('a partly off-field outline paints only its real edges, not a false edge along the clipped border', () => {
+    const c = frozen();
+    // (-5,5)-(10,10): the left edge is off-field, so column 0 is interior (except where the top/bottom edges cross it).
+    const ring = fillRect(c, 'surface', -5, 5, 10, 10, Surface.Sand, true);
+    for (let y = 0; y < 25; y++) expect(surfAt(ring, 0, y)).toBe(y === 5 || y === 10 ? Surface.Sand : Surface.Grass);
+    for (let x = 0; x <= 10; x++) {
+      expect(surfAt(ring, x, 5)).toBe(Surface.Sand); // top edge
+      expect(surfAt(ring, x, 10)).toBe(Surface.Sand); // bottom edge
+    }
+    for (let y = 6; y <= 9; y++) {
+      expect(surfAt(ring, 10, y)).toBe(Surface.Sand); // right edge
+      for (let x = 0; x < 10; x++) expect(surfAt(ring, x, y)).toBe(Surface.Grass); // interior, column 0 included
+    }
+    expect(surfAt(ring, 11, 7)).toBe(Surface.Grass);
+    expect(surfAt(ring, 5, 4)).toBe(Surface.Grass);
+    expect(surfAt(ring, 5, 11)).toBe(Surface.Grass);
+    // Clipped on all four sides: the whole field is interior, nothing is painted and the input comes back unchanged.
+    expect(fillRect(c, 'walls', -3, -3, 60, 40, WallShape.Full, true)).toBe(c);
+    // Clipped at the bottom-right: row 0 and column 0 are real edges, the clipped border rows/columns are interior.
+    const corner = fillRect(c, 'walls', 0, 0, 60, 40, WallShape.Full, true);
+    for (let x = 0; x < 49; x++) expect(wallAt(corner, x, 0)).toBe(WallShape.Full);
+    for (let y = 0; y < 25; y++) expect(wallAt(corner, 0, y)).toBe(WallShape.Full);
+    expect(wallAt(corner, 48, 12)).toBe(wallAt(c, 48, 12));
+    expect(wallAt(corner, 20, 24)).toBe(wallAt(c, 20, 24));
+    expect(wallAt(corner, 20, 12)).toBe(wallAt(c, 20, 12));
+    // Fractional corners: a negative fraction is still off-field (not -0 === column 0), positive ones truncate.
+    const frac = fillRect(c, 'surface', -0.5, 5.9, 10.2, 10.1, Surface.Sand, true);
+    expect(frac.surface).toEqual(ring.surface);
+  });
+
   it('line paints the on-field part when an endpoint (or both) is far outside the field', () => {
     const far = line(frozen(), 'surface', -100, 12, 5, 12, Surface.Sand);
     for (let x = 0; x <= 5; x++) expect(surfAt(far, x, 12)).toBe(Surface.Sand);
@@ -324,6 +354,48 @@ describe('fillRect / line: off-field geometry', () => {
     for (let i = 0; i < 300; i++) {
       const [x0, y0, x1, y1] = [rnd(-30, 78), rnd(-20, 44), rnd(-30, 78), rnd(-20, 44)];
       expect(painted(line(base, 'surface', x0, y0, x1, y1, Surface.Acid)), `${x0},${y0} -> ${x1},${y1}`).toEqual(reference(x0, y0, x1, y1));
+    }
+  });
+});
+
+describe('fillRect / line: R14 edge cases', () => {
+  it('fillRect outline wholly outside the field is a no-op too; a rectangle touching only the far corner paints one tile', () => {
+    const c = frozen();
+    expect(fillRect(c, 'walls', -8, -8, -1, -1, WallShape.Full, true)).toBe(c);
+    expect(fillRect(c, 'surface', 49, 25, 80, 60, Surface.Sand, true)).toBe(c);
+    expect(fillRect(c, 'surface', 0.5, 30, 10.2, 40, Surface.Sand)).toBe(c); // fractional, fully below the field
+    const corner = fillRect(c, 'surface', 48, 24, 70, 50, Surface.Sand);
+    expect(surfAt(corner, 48, 24)).toBe(Surface.Sand);
+    expect(surfAt(corner, 47, 24)).toBe(Surface.Grass);
+    expect(surfAt(corner, 48, 23)).toBe(Surface.Grass);
+    expect(corner.id).not.toBe(c.id);
+  });
+
+  it('line whose major axis crosses the field but whose minor coordinate stays off-field is a no-op', () => {
+    const c = frozen();
+    expect(line(c, 'surface', -5, -3, 60, -3, Surface.Sand)).toBe(c); // horizontal, above the field
+    expect(line(c, 'surface', -5, 25, 60, 25, Surface.Sand)).toBe(c); // horizontal, just below the field
+    expect(line(c, 'walls', 49, -10, 49, 40, WallShape.Full)).toBe(c); // vertical, just right of the field
+    expect(line(c, 'walls', -1, -10, -1, 40, WallShape.Full)).toBe(c); // vertical, just left of the field
+    // A clipped line is clipped, never shifted onto the field: the neighbouring row stays untouched.
+    const touching = line(c, 'surface', -5, 24, 60, 24, Surface.Sand);
+    expect(touching.surface[24]).toBe('s'.repeat(49));
+    expect(touching.surface[23]).toBe(c.surface[23]);
+  });
+
+  it('line clipping keeps the exact raster: the on-field part equals the on-field cells of the unclipped line', () => {
+    // Slope 1/2 from far outside: closed-form midpoint raster y = -49 + floor((k + 1) / 2) with k = x + 97, i.e. y = floor(x / 2).
+    const clipped = line(frozen(), 'surface', -97, -49, 47, 23, Surface.Ice);
+    for (let x = 0; x < 49; x++) {
+      let painted = -1;
+      let count = 0;
+      for (let y = 0; y < 25; y++) if (surfAt(clipped, x, y) === Surface.Ice) { painted = y; count++; }
+      const expected = Math.floor(x / 2);
+      if (x > 47) expect(painted, `column ${x}`).toBe(-1);
+      else {
+        expect(count, `column ${x}`).toBe(1);
+        expect(painted, `column ${x}`).toBe(expected);
+      }
     }
   });
 });

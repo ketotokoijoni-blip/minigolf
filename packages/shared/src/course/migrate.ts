@@ -10,9 +10,11 @@ export type ParseResult =
 
 export const COURSE_FORMAT = 'puttipeli-course';
 export const CURRENT_FORMAT_VERSION = 1;
-/** Accepted id shapes: built-in 'b_NN' or content hash 'c_' + 16 hex. Anything else is recomputed. */
-const ID_PATTERN = /^(b_[0-9]{2}|c_[0-9a-f]{16})$/;
-
+/**
+ * Error codes parseCourseFile can report before (or instead of) validateCourse's codes; the client needs a
+ * 'validation.<code>' string for each (R15). BAD_NAME/BAD_AUTHOR/BAD_DESCRIPTION are shared with validate.ts.
+ */
+export const PARSE_ERROR_CODES = ['FORMAT_UNKNOWN', 'VERSION_TOO_NEW', 'BAD_STRUCTURE', 'BAD_OBJECT_TYPE'] as const;
 const OBJECT_TYPES = new Set<string>(['start', 'hole', 'teleport', 'magnet', 'mine']);
 
 const fail = (code: string, message: string): ParseResult => ({ ok: false, issues: [{ level: 'error', code, message }] });
@@ -27,10 +29,28 @@ function normalizeRules(raw: unknown): CourseRules {
   };
 }
 
-/** Shape check of one object entry; field values are left for validateCourse, only the discriminator is enforced here. */
+/** Issue-params value for a coordinate of a rejected object: the number itself, or '?' when it is not a number. */
+const coordParam = (v: unknown): number | string => (typeof v === 'number' && Number.isFinite(v) ? v : '?');
+
+/**
+ * Shape check of one object entry; field values are left for validateCourse, only the discriminator is enforced here.
+ * A non-object entry is BAD_STRUCTURE; an object with an unknown `type` is BAD_OBJECT_TYPE with params {x, y} (R14).
+ */
 function normalizeObject(raw: unknown, index: number): CourseObject | ValidationIssue {
-  if (!isRecord(raw) || typeof raw.type !== 'string' || !OBJECT_TYPES.has(raw.type)) {
-    return { level: 'error', code: 'BAD_STRUCTURE', message: `objects[${index}] is not a known course object`, objectIndex: index };
+  if (!isRecord(raw)) {
+    return { level: 'error', code: 'BAD_STRUCTURE', message: `objects[${index}] is not an object`, objectIndex: index };
+  }
+  if (typeof raw.type !== 'string' || !OBJECT_TYPES.has(raw.type)) {
+    const issue: ValidationIssue = {
+      level: 'error',
+      code: 'BAD_OBJECT_TYPE',
+      message: `objects[${index}] has unknown type '${String(raw.type)}'`,
+      objectIndex: index,
+      params: { x: coordParam(raw.x), y: coordParam(raw.y) },
+    };
+    if (typeof raw.x === 'number') issue.x = raw.x;
+    if (typeof raw.y === 'number') issue.y = raw.y;
+    return issue;
   }
   const x = asNumber(raw.x);
   const y = asNumber(raw.y);
@@ -63,7 +83,9 @@ function migrateToCurrent(raw: Record<string, unknown>, version: number): Record
 /**
  * Structural check (format discriminator, version chain, defaults for optional fields), then validateCourse.
  * Never throws; unusable input comes back as issues. Missing author/description default to '', missing rules to
- * the defaults, id is recomputed when missing or not matching the c_/b_ pattern.
+ * the defaults. The id is always recomputed from the content (R13): it is 'b_NN' only when the input is byte-identical
+ * to the built-in registered under that id (course/builtin.ts), otherwise the 'c_' content hash, whatever the file
+ * claimed. Hence a stale or forged id can never make the layer caches serve the wrong geometry.
  */
 export function parseCourseFile(input: unknown): ParseResult {
   if (!isRecord(input)) return fail('FORMAT_UNKNOWN', 'course file is not a JSON object');
@@ -119,6 +141,6 @@ export function parseCourseFile(input: unknown): ParseResult {
   const all = validateCourse(course);
   const errors = all.filter((i) => i.level === 'error');
   if (errors.length > 0) return { ok: false, issues: all };
-  if (!ID_PATTERN.test(course.id)) course.id = courseId({ ...course, id: '' });
+  course.id = courseId(course);
   return { ok: true, course, warnings: all };
 }

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { BUILTIN_COURSES } from './builtin';
-import { COURSE_ID_BASIS_2, canonicalCourseJson, courseByteLength, courseId, isBuiltinId, utf8Length, withComputedId } from './canonical';
+import {
+  COURSE_ID_BASIS_2, canonicalCourseJson, courseByteLength, courseId, customIdOfCanonical, isBuiltinId, isCustomId,
+  isRegisteredBuiltin, registerBuiltinCanonical, registeredBuiltinCanonical, registeredBuiltinIds, utf8Length, withComputedId,
+} from './canonical';
 import type { Course } from './types';
 import { testCourse } from './fixtures.test';
 
@@ -90,14 +93,74 @@ describe('courseByteLength', () => {
 });
 
 describe('built-in id shape', () => {
-  it('preserves only b_ + two digits; any other b_… string is rehashed like a custom course', () => {
-    const a = testCourse();
+  it('recognises b_ + two digits and c_ + 16 hex; every other string is neither', () => {
     expect(isBuiltinId('b_01')).toBe(true);
     expect(isBuiltinId('b_1')).toBe(false);
     expect(isBuiltinId('b_foo')).toBe(false);
     expect(isBuiltinId('b_001')).toBe(false);
-    expect(courseId({ ...a, id: 'b_07' })).toBe('b_07');
-    expect(courseId({ ...a, id: 'b_foo' })).toBe(courseId({ ...a, id: '' }));
-    expect(withComputedId({ ...a, id: 'b_x' }).id).toMatch(/^c_[0-9a-f]{16}$/);
+    expect(isBuiltinId(7)).toBe(false);
+    expect(isCustomId('c_0123456789abcdef')).toBe(true);
+    expect(isCustomId('c_0123456789ABCDEF')).toBe(false);
+    expect(isCustomId('c_0123')).toBe(false);
+    expect(isCustomId('b_01')).toBe(false);
+  });
+});
+
+describe('reserved built-in ids (R13)', () => {
+  it('a course that merely claims a built-in id is rehashed to a c_ id', () => {
+    const a = testCourse();
+    const plain = courseId({ ...a, id: '' });
+    expect(plain).toMatch(/^c_[0-9a-f]{16}$/);
+    for (const claimed of ['b_01', 'b_07', 'b_09', 'b_42', 'b_foo', 'b_x']) {
+      expect(courseId({ ...a, id: claimed }), claimed).toBe(plain);
+      expect(withComputedId({ ...a, id: claimed }).id, claimed).toBe(plain);
+      expect(isRegisteredBuiltin({ ...a, id: claimed }), claimed).toBe(false);
+    }
+  });
+
+  it('builtin.ts has registered all nine canonical forms and each built-in keeps its id', () => {
+    expect(registeredBuiltinIds()).toEqual(BUILTIN_COURSES.map((c) => c.id));
+    for (const c of BUILTIN_COURSES) {
+      expect(registeredBuiltinCanonical(c.id)).toBe(canonicalCourseJson(c));
+      expect(isRegisteredBuiltin(c)).toBe(true);
+      expect(courseId(c)).toBe(c.id);
+    }
+    expect(registeredBuiltinCanonical('b_42')).toBeUndefined();
+  });
+
+  it('a byte-identical copy of a built-in keeps the b_ id, a one-tile change turns it into a c_ id', () => {
+    const original = BUILTIN_COURSES[0]!;
+    const copy: Course = JSON.parse(JSON.stringify(original)) as Course;
+    expect(courseId(copy)).toBe('b_01');
+    expect(withComputedId(copy).id).toBe('b_01');
+    const surface = copy.surface.slice();
+    surface[3] = surface[3]!.slice(0, 10) + 's' + surface[3]!.slice(11);
+    const tampered: Course = { ...copy, surface };
+    const id = courseId(tampered);
+    expect(id).toMatch(/^c_[0-9a-f]{16}$/);
+    expect(id).toBe(customIdOfCanonical(canonicalCourseJson(tampered)));
+    expect(isRegisteredBuiltin(tampered)).toBe(false);
+    // A metadata-only change (name, par) is a different course too.
+    expect(courseId({ ...copy, name: 'Ensiputti 2' })).toMatch(/^c_/);
+    expect(courseId({ ...copy, rules: { ...copy.rules, par: 3 } })).toMatch(/^c_/);
+    // The same content under a different built-in id is not that built-in.
+    expect(courseId({ ...copy, id: 'b_02' })).toMatch(/^c_/);
+    // Without an id the content hash is used even though the content equals a built-in (only builtin.ts mints b_ ids).
+    expect(courseId({ ...copy, id: '' })).toMatch(/^c_/);
+  });
+
+  it('registerBuiltinCanonical accepts only b_NN ids and the registration decides what courseId keeps', () => {
+    const a = testCourse();
+    expect(() => registerBuiltinCanonical('c_0123456789abcdef', '{}')).toThrow();
+    expect(() => registerBuiltinCanonical('b_x', '{}')).toThrow();
+    expect(courseId({ ...a, id: 'b_99' })).toMatch(/^c_/);
+    registerBuiltinCanonical('b_99', canonicalCourseJson(a));
+    expect(courseId({ ...a, id: 'b_99' })).toBe('b_99');
+    expect(isRegisteredBuiltin({ ...a, id: 'b_99' })).toBe(true);
+    expect(courseId({ ...a, id: 'b_99', name: 'Muokattu' })).toMatch(/^c_/);
+    // Re-registration (dev-server hot reload) replaces the content instead of throwing.
+    registerBuiltinCanonical('b_99', canonicalCourseJson({ ...a, name: 'Muokattu' }));
+    expect(courseId({ ...a, id: 'b_99' })).toMatch(/^c_/);
+    expect(courseId({ ...a, id: 'b_99', name: 'Muokattu' })).toBe('b_99');
   });
 });

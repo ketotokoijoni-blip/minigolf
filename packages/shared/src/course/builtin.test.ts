@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { COURSE_H, COURSE_W } from '../constants';
-import { BUILTIN_COURSES, BUILTIN_SET_NAME, findBuiltin } from './builtin';
-import { canonicalCourseJson, courseByteLength } from './canonical';
+import { BUILTIN_COURSES, BUILTIN_SET_NAME, builtinIdAt, findBuiltin } from './builtin';
+import { canonicalCourseJson, courseByteLength, courseId } from './canonical';
+import { parseCourseFile } from './migrate';
 import { tileIndex } from './grid';
 import { decodeLayers } from './parse';
 import { isHoleReachable, reachableTiles } from './reachability';
@@ -215,5 +216,61 @@ describe('built-in courses', () => {
       expect(l.holes.length).toBeGreaterThanOrEqual(1);
       expect(l.startTile).toBeGreaterThanOrEqual(0);
     }
+  });
+});
+
+describe('built-in ids are reserved (R13)', () => {
+  it('builtinIdAt numbers play-order positions b_01..b_09', () => {
+    expect(BUILTIN_COURSES.map((_, i) => builtinIdAt(i))).toEqual(BUILTIN_COURSES.map((c) => c.id));
+  });
+
+  it('parseCourseFile keeps b_NN for a byte-identical built-in file (e.g. an exported built-in re-imported)', () => {
+    for (const c of BUILTIN_COURSES) {
+      const r = parseCourseFile(JSON.parse(JSON.stringify(c)));
+      expect(r.ok, c.id).toBe(true);
+      if (r.ok) {
+        expect(r.course.id).toBe(c.id);
+        expect(canonicalCourseJson(r.course)).toBe(canonicalCourseJson(c));
+      }
+    }
+  });
+
+  it('parseCourseFile rehashes a built-in file whose content was changed but still claims the b_ id', () => {
+    const c = byId('b_04');
+    const raw = JSON.parse(JSON.stringify(c)) as { surface: string[] };
+    // A single tile of water becomes grass (keeps the course valid).
+    raw.surface[7] = raw.surface[7]!.slice(0, 18) + '.' + raw.surface[7]!.slice(19);
+    const r = parseCourseFile(raw);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.course.id).toMatch(/^c_[0-9a-f]{16}$/);
+    expect(r.course.id).toBe(courseId({ ...r.course, id: '' }));
+    // Re-parsing the result is idempotent and the geometry no longer collides with the built-in cache key.
+    const again = parseCourseFile(JSON.parse(JSON.stringify(r.course)));
+    expect(again.ok && again.course.id).toBe(r.course.id);
+    expect(findBuiltin(r.course.id)).toBeUndefined();
+    // Name- or description-only edits lose the built-in id too.
+    const renamed = parseCourseFile({ ...JSON.parse(JSON.stringify(c)), name: 'Lampi (oma)' });
+    expect(renamed.ok && renamed.course.id).toMatch(/^c_/);
+    const described = parseCourseFile({ ...JSON.parse(JSON.stringify(c)), description: '' });
+    expect(described.ok && described.course.id).toMatch(/^c_/);
+  });
+
+  it('a custom course that claims any b_ id (used or unused) comes back with a c_ id', () => {
+    const base = byId('b_01');
+    const r = parseCourseFile({ ...JSON.parse(JSON.stringify(base)), id: 'b_09' });
+    expect(r.ok && r.course.id).toMatch(/^c_/);
+    const unused = parseCourseFile({ ...JSON.parse(JSON.stringify(base)), id: 'b_10' });
+    expect(unused.ok && unused.course.id).toMatch(/^c_/);
+    // and the unchanged file keeps its own id
+    const same = parseCourseFile(JSON.parse(JSON.stringify(base)));
+    expect(same.ok && same.course.id).toBe('b_01');
+  });
+
+  it('no two built-ins share content and each content hash is unique', () => {
+    const canons = new Set(BUILTIN_COURSES.map((c) => canonicalCourseJson(c)));
+    expect(canons.size).toBe(9);
+    const hashes = new Set(BUILTIN_COURSES.map((c) => courseId({ ...c, id: '' })));
+    expect(hashes.size).toBe(9);
   });
 });

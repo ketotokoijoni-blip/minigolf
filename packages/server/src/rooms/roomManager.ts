@@ -8,6 +8,7 @@ import type { Config } from '../config';
 import type { Logger } from '../log';
 import type { ClientSession } from '../ws/connection';
 import { generateRoomCode } from './codes';
+import { CourseStore } from './courseStore';
 import { Room } from './room';
 
 export type RoomManagerConfig = Pick<Config, 'maxRooms' | 'roomIdleTtlMin' | 'roomEmptyTtlSec'>;
@@ -31,6 +32,8 @@ export class RoomManager {
     private readonly config: RoomManagerConfig,
     private readonly log: Logger,
     private readonly codeGen: () => string = generateRoomCode,
+    /** Shared by every room: validated course resolution and the per-id decoded-layer cache. */
+    readonly courseStore: CourseStore = new CourseStore(),
   ) {}
 
   get(code: string): Room | null {
@@ -49,7 +52,7 @@ export class RoomManager {
     const code = this.allocateCode();
     if (code === null) return ErrorCode.SERVER_FULL;
 
-    const room = new Room(code, settings, { clock: this.clock, log: this.log, onMembersChanged: (r) => this.onMembersChanged(r) });
+    const room = new Room(code, settings, { clock: this.clock, log: this.log, courseStore: this.courseStore, onMembersChanged: (r) => this.onMembersChanged(r) });
     this.rooms.set(code, room);
     const err = room.addPlayer(session, name, colour);
     if (err !== null) {

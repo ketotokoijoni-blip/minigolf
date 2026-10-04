@@ -425,6 +425,771 @@
         "penalty": 0,
         "checksum": 1860237835
       }
+    },
+    {
+      "course": "b_01",
+      "from": {
+        "x": 52.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 12000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 217,
+        "result": "holed",
+        "penalty": 0,
+        "checksum": 3071300210
+      }
+    },
+    {
+      "course": "b_01",
+      "from": {
+        "x": 52.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 9000,
+        "dy": -7000
+      },
+      "expect": {
+        "ticks": 331,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 1385531284
+      }
+    },
+    {
+      "course": "b_01",
+      "from": {
+        "x": 52.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 3000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 96,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 3907236614
+      }
+    },
+    {
+      "course": "b_01",
+      "from": {
+        "x": 450,
+        "y": 100
+      },
+      "shot": {
+        "dx": 10900,
+        "dy": 5000
+      },
+      "expect": {
+        "ticks": 228,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 160331520
+      }
+    },
+    {
+      "course": "b_01",
+      "from": {
+        "x": 600,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 2000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 62,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 3604639390
+      }
+    },
+    {
+      "course": "b_02",
+      "from": {
+        "x": 67.5,
+        "y": 307.5
+      },
+      "shot": {
+        "dx": 12000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 209,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 2733005047
+      }
+    },
+    {
+      "course": "b_02",
+      "from": {
+        "x": 67.5,
+        "y": 307.5
+      },
+      "shot": {
+        "dx": 11883,
+        "dy": -1670
+      },
+      "expect": {
+        "ticks": 134,
+        "result": "holed",
+        "penalty": 0,
+        "checksum": 3742210825
+      }
+    },
+    {
+      "course": "b_02",
+      "from": {
+        "x": 67.5,
+        "y": 307.5
+      },
+      "shot": {
+        "dx": 6000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 187,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 3345922391
+      }
+    },
+    {
+      "course": "b_02",
+      "from": {
+        "x": 307.5,
+        "y": 200
+      },
+      "shot": {
+        "dx": 0,
+        "dy": -9000
+      },
+      "expect": {
+        "ticks": 62,
+        "result": "holed",
+        "penalty": 0,
+        "checksum": 3742210825
+      }
+    },
+    {
+      "course": "b_02",
+      "from": {
+        "x": 262.5,
+        "y": 330
+      },
+      "shot": {
+        "dx": 9000,
+        "dy": 6000
+      },
+      "expect": {
+        "ticks": 209,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 3580767509
+      }
+    },
+    {
+      "course": "b_03",
+      "from": {
+        "x": 52.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 12000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 479,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 3920582820
+      }
+    },
+    {
+      "course": "b_03",
+      "from": {
+        "x": 52.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 8560,
+        "dy": -2781
+      },
+      "expect": {
+        "ticks": 226,
+        "result": "holed",
+        "penalty": 0,
+        "checksum": 1174176666
+      }
+    },
+    {
+      "course": "b_03",
+      "from": {
+        "x": 52.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 5000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 510,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 528771284
+      }
+    },
+    {
+      "course": "b_03",
+      "from": {
+        "x": 247.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 1000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 264,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 1662109299
+      }
+    },
+    {
+      "course": "b_03",
+      "from": {
+        "x": 650,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": -9000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 683,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 231406678
+      }
+    },
+    {
+      "course": "b_04",
+      "from": {
+        "x": 52.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 12000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 338,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 2539265887
+      }
+    },
+    {
+      "course": "b_04",
+      "from": {
+        "x": 52.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 10000,
+        "dy": -5000
+      },
+      "expect": {
+        "ticks": 324,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 722551147
+      }
+    },
+    {
+      "course": "b_04",
+      "from": {
+        "x": 52.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 8900,
+        "dy": -8000
+      },
+      "expect": {
+        "ticks": 74,
+        "result": "water",
+        "penalty": 1,
+        "checksum": 2718731200
+      }
+    },
+    {
+      "course": "b_04",
+      "from": {
+        "x": 247.5,
+        "y": 180
+      },
+      "shot": {
+        "dx": 11950,
+        "dy": 1000
+      },
+      "expect": {
+        "ticks": 34,
+        "result": "water",
+        "penalty": 1,
+        "checksum": 1961676853
+      }
+    },
+    {
+      "course": "b_04",
+      "from": {
+        "x": 400,
+        "y": 345
+      },
+      "shot": {
+        "dx": 10300,
+        "dy": -6000
+      },
+      "expect": {
+        "ticks": 204,
+        "result": "water",
+        "penalty": 1,
+        "checksum": 671778769
+      }
+    },
+    {
+      "course": "b_05",
+      "from": {
+        "x": 67.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 6741,
+        "dy": 3288
+      },
+      "expect": {
+        "ticks": 238,
+        "result": "holed",
+        "penalty": 0,
+        "checksum": 2790488453
+      }
+    },
+    {
+      "course": "b_05",
+      "from": {
+        "x": 67.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 8000,
+        "dy": -4000
+      },
+      "expect": {
+        "ticks": 255,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 1432687498
+      }
+    },
+    {
+      "course": "b_05",
+      "from": {
+        "x": 67.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 12000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 285,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 3337448078
+      }
+    },
+    {
+      "course": "b_05",
+      "from": {
+        "x": 450,
+        "y": 97.5
+      },
+      "shot": {
+        "dx": 12000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 250,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 3607131818
+      }
+    },
+    {
+      "course": "b_05",
+      "from": {
+        "x": 600,
+        "y": 300
+      },
+      "shot": {
+        "dx": -10300,
+        "dy": -6000
+      },
+      "expect": {
+        "ticks": 215,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 3737383473
+      }
+    },
+    {
+      "course": "b_06",
+      "from": {
+        "x": 52.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 10900,
+        "dy": -5000
+      },
+      "expect": {
+        "ticks": 317,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 4267032039
+      }
+    },
+    {
+      "course": "b_06",
+      "from": {
+        "x": 52.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 7053,
+        "dy": -9708
+      },
+      "expect": {
+        "ticks": 327,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 31382610
+      }
+    },
+    {
+      "course": "b_06",
+      "from": {
+        "x": 337.5,
+        "y": 230
+      },
+      "shot": {
+        "dx": 0,
+        "dy": -5000
+      },
+      "expect": {
+        "ticks": 39,
+        "result": "acid",
+        "penalty": 1,
+        "checksum": 158214651
+      }
+    },
+    {
+      "course": "b_06",
+      "from": {
+        "x": 517.5,
+        "y": 350
+      },
+      "shot": {
+        "dx": 0,
+        "dy": -4000
+      },
+      "expect": {
+        "ticks": 218,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 3273669820
+      }
+    },
+    {
+      "course": "b_06",
+      "from": {
+        "x": 600,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 6000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 64,
+        "result": "holed",
+        "penalty": 0,
+        "checksum": 761475208
+      }
+    },
+    {
+      "course": "b_07",
+      "from": {
+        "x": 52.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 12000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 246,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 1762275347
+      }
+    },
+    {
+      "course": "b_07",
+      "from": {
+        "x": 52.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 11000,
+        "dy": -4000
+      },
+      "expect": {
+        "ticks": 258,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 1883598063
+      }
+    },
+    {
+      "course": "b_07",
+      "from": {
+        "x": 380.3,
+        "y": 140
+      },
+      "shot": {
+        "dx": 6000,
+        "dy": -10392
+      },
+      "expect": {
+        "ticks": 142,
+        "result": "holed",
+        "penalty": 0,
+        "checksum": 3390743540
+      }
+    },
+    {
+      "course": "b_07",
+      "from": {
+        "x": 337.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 12000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 45,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 441629675
+      }
+    },
+    {
+      "course": "b_07",
+      "from": {
+        "x": 442.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 6000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 21,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 491629181
+      }
+    },
+    {
+      "course": "b_08",
+      "from": {
+        "x": 52.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 12000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 73,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 925711997
+      }
+    },
+    {
+      "course": "b_08",
+      "from": {
+        "x": 52.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 6000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 194,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 2855371427
+      }
+    },
+    {
+      "course": "b_08",
+      "from": {
+        "x": 270,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 6000,
+        "dy": -4000
+      },
+      "expect": {
+        "ticks": 23,
+        "result": "mine",
+        "penalty": 1,
+        "checksum": 2328516997
+      }
+    },
+    {
+      "course": "b_08",
+      "from": {
+        "x": 300,
+        "y": 150
+      },
+      "shot": {
+        "dx": 500,
+        "dy": 11900
+      },
+      "expect": {
+        "ticks": 3600,
+        "result": "timeout",
+        "penalty": 0,
+        "checksum": 4126968987
+      }
+    },
+    {
+      "course": "b_08",
+      "from": {
+        "x": 600,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 5000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 114,
+        "result": "holed",
+        "penalty": 0,
+        "checksum": 3386388392
+      }
+    },
+    {
+      "course": "b_09",
+      "from": {
+        "x": 52.5,
+        "y": 307.5
+      },
+      "shot": {
+        "dx": 12000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 220,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 3194409290
+      }
+    },
+    {
+      "course": "b_09",
+      "from": {
+        "x": 52.5,
+        "y": 307.5
+      },
+      "shot": {
+        "dx": 7294,
+        "dy": 7553
+      },
+      "expect": {
+        "ticks": 438,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 1520382680
+      }
+    },
+    {
+      "course": "b_09",
+      "from": {
+        "x": 127.5,
+        "y": 250
+      },
+      "shot": {
+        "dx": 0,
+        "dy": -12000
+      },
+      "expect": {
+        "ticks": 378,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 3440124721
+      }
+    },
+    {
+      "course": "b_09",
+      "from": {
+        "x": 690,
+        "y": 120
+      },
+      "shot": {
+        "dx": 2000,
+        "dy": -11800
+      },
+      "expect": {
+        "ticks": 32,
+        "result": "acid",
+        "penalty": 1,
+        "checksum": 1808141457
+      }
+    },
+    {
+      "course": "b_09",
+      "from": {
+        "x": 660,
+        "y": 120
+      },
+      "shot": {
+        "dx": 1000,
+        "dy": -11950
+      },
+      "expect": {
+        "ticks": 155,
+        "result": "water",
+        "penalty": 1,
+        "checksum": 1330257094
+      }
     }
   ]
 }

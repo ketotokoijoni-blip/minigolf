@@ -108,11 +108,20 @@ const clampCoord = (v: number, max: number): number => (v < 0 ? 0 : v > max ? ma
 
 /**
  * Fills (outline: strokes) the rectangle spanned by the two corners (inclusive, any order), clipped to the field.
- * A rectangle with no cell inside the field returns the input unchanged (the clamp must not paint an edge tile).
+ * A rectangle with no cell inside the field returns the input unchanged (the clamp must not paint an edge tile), and
+ * the outline is decided on the unclipped rectangle: a partly off-field outline paints only its real edges, never a
+ * false edge along the field border where the clipping happened.
  */
 export function fillRect(course: Course, layer: Layer, x0: number, y0: number, x1: number, y1: number, value: number, outline = false): Course {
   if (![x0, y0, x1, y1].every(Number.isFinite)) return course;
   if (Math.max(x0, x1) < 0 || Math.min(x0, x1) > COURSE_W - 1 || Math.max(y0, y1) < 0 || Math.min(y0, y1) > COURSE_H - 1) return course;
+  // Unclipped edges of the rectangle: the outline test uses these, the loops use the clipped range. floor (not trunc)
+  // so a negative fractional corner stays off-field (-0.5 -> -1, never -0 === 0); for the non-negative values it
+  // agrees with clampCoord's truncation.
+  const ux0 = Math.floor(Math.min(x0, x1));
+  const ux1 = Math.floor(Math.max(x0, x1));
+  const uy0 = Math.floor(Math.min(y0, y1));
+  const uy1 = Math.floor(Math.max(y0, y1));
   const ax = clampCoord(Math.min(x0, x1), COURSE_W - 1);
   const bx = clampCoord(Math.max(x0, x1), COURSE_W - 1);
   const ay = clampCoord(Math.min(y0, y1), COURSE_H - 1);
@@ -120,7 +129,7 @@ export function fillRect(course: Course, layer: Layer, x0: number, y0: number, x
   const cells: { x: number; y: number }[] = [];
   for (let y = ay; y <= by; y++) {
     for (let x = ax; x <= bx; x++) {
-      if (outline && x !== ax && x !== bx && y !== ay && y !== by) continue;
+      if (outline && x !== ux0 && x !== ux1 && y !== uy0 && y !== uy1) continue;
       cells.push({ x, y });
     }
   }

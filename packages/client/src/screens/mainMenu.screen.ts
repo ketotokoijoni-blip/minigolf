@@ -1,4 +1,5 @@
-// #/ main menu (DESIGN §12.1).
+// #/ main menu (DESIGN §12.1). The multiplayer caption shows GET /api/stats (re-fetched every STATS_REFRESH_MS
+// while the menu is open) or the "server unreachable" fallback. Mounting leaves and clears any active GameHost.
 import { DEFAULT_PLAYER_NAME, MAX_NAME_CHARS } from '@puttipeli/shared/constants';
 import { registerScreen, type Screen, type ScreenContext } from '../app/screen';
 import { getActiveHost, setActiveHost } from '../app/activeHost';
@@ -27,9 +28,13 @@ function menuButton(label: string, caption: string | HTMLElement, onClick: () =>
   return b;
 }
 
+/** How often the server status caption is refreshed while the menu is open. */
+const STATS_REFRESH_MS = 30_000;
+
 function createMainMenu(): Screen {
   let abort: AbortController | null = null;
   let unsubscribe: (() => void) | null = null;
+  let statsTimer: number | null = null;
 
   return {
     mount(root, ctx: ScreenContext) {
@@ -61,6 +66,7 @@ function createMainMenu(): Screen {
       unsubscribe = appStore.subscribe(renderCaption);
       abort = new AbortController();
       void refreshServerStats(abort.signal);
+      statsTimer = window.setInterval(() => { if (abort && !abort.signal.aborted) void refreshServerStats(abort.signal); }, STATS_REFRESH_MS);
 
       const buttons = el('nav', { class: 'menu__buttons', 'aria-label': t('app.title') },
         menuButton(t('menu.single'), t('menu.single.caption'), () => ctx.navigate('#/play'), true),
@@ -71,14 +77,17 @@ function createMainMenu(): Screen {
       );
 
       const nameLabel = (): string => t('menu.nickname', { name: getSettings().name || DEFAULT_PLAYER_NAME });
+      const nameDot = el('span', { class: 'chip__dot', 'aria-hidden': 'true' });
+      nameDot.style.setProperty('--player-colour', `var(--player-${getSettings().colour})`);
       const nameBtn = button(nameLabel(), async () => {
         const v = await promptDialog(t('menu.nickname.prompt'), {
           initial: getSettings().name,
           maxLength: MAX_NAME_CHARS,
           validate: (s) => (sanitizeName(s).length === 0 ? t('menu.nickname.invalid') : null),
         });
-        if (v !== null) { updateSettings({ name: sanitizeName(v) }); nameBtn.textContent = nameLabel(); }
+        if (v !== null) { updateSettings({ name: sanitizeName(v) }); nameBtn.replaceChildren(nameDot, nameLabel()); }
       }, { variant: 'ghost' });
+      nameBtn.replaceChildren(nameDot, nameLabel());
 
       const footer = el('footer', { class: 'footer' },
         nameBtn,
@@ -90,6 +99,7 @@ function createMainMenu(): Screen {
     },
 
     unmount() {
+      if (statsTimer !== null) { window.clearInterval(statsTimer); statsTimer = null; }
       abort?.abort();
       abort = null;
       unsubscribe?.();

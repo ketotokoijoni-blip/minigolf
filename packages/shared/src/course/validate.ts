@@ -13,6 +13,15 @@ import { Surface, WallShape, type Course, type CourseObject, type ValidationIssu
 
 export const PAR_HIGH_THRESHOLD = 8;
 
+/** Every error code validateCourse can emit (§7.5 table + R14 BAD_OBJECT_TYPE + BAD_STRUCTURE for non-object entries). */
+export const VALIDATION_ERROR_CODES = [
+  'BAD_DIMENSIONS', 'BAD_CHAR', 'NO_START', 'MULTIPLE_STARTS', 'NO_HOLE', 'OBJECT_OUT_OF_BOUNDS', 'OBJECT_OVERLAP',
+  'OBJECT_ON_WALL', 'MAGNET_NOT_ON_FULL', 'OBJECT_ON_HAZARD', 'TELEPORT_GROUP_SIZE', 'BAD_TELEPORT_GROUP', 'BAD_MAGNET',
+  'BAD_RULES', 'BAD_NAME', 'BAD_AUTHOR', 'BAD_DESCRIPTION', 'TOO_LARGE', 'BAD_OBJECT_TYPE', 'BAD_STRUCTURE',
+] as const;
+/** Every warning code validateCourse can emit. */
+export const VALIDATION_WARNING_CODES = ['UNREACHABLE_HOLE', 'HOLE_NEXT_TO_START', 'OPEN_BORDER', 'PAR_HIGH'] as const;
+
 type Issue = ValidationIssue;
 const err = (code: string, message: string, extra: Partial<Issue> = {}): Issue => ({ level: 'error', code, message, ...extra });
 const warn = (code: string, message: string, extra: Partial<Issue> = {}): Issue => ({ level: 'warning', code, message, ...extra });
@@ -20,6 +29,8 @@ const warn = (code: string, message: string, extra: Partial<Issue> = {}): Issue 
 const OBJECT_TYPES = new Set<string>(['start', 'hole', 'teleport', 'magnet', 'mine']);
 const isHazardForBall = (s: number): boolean => s === Surface.Water || s === Surface.Acid || s === Surface.Tar;
 const isLiquid = (s: number): boolean => s === Surface.Water || s === Surface.Acid;
+/** Issue-params value for a coordinate of a rejected object: the number itself, or '?' when it is not a number. */
+const coordParam = (v: unknown): number | string => (typeof v === 'number' && Number.isFinite(v) ? v : '?');
 
 /** Checks the two row layers; returns false when the grid is unusable for the object checks. */
 function checkLayers(course: Course, issues: Issue[]): boolean {
@@ -92,16 +103,24 @@ function checkObjects(course: Course, gridOk: boolean, issues: Issue[]): void {
   for (let i = 0; i < objects.length; i++) {
     const o = objects[i]!;
     // A hand-built or tampered Course (not coming through parseCourseFile) may carry a non-object entry or an unknown
-    // type; decodeLayers would throw on it, so it must be an error here (same code parseCourseFile uses for the shape).
+    // type; decodeLayers would throw on it, so both are errors here (R14): BAD_STRUCTURE for a non-object entry,
+    // BAD_OBJECT_TYPE with params {x, y} for an unknown type (the same codes parseCourseFile uses for the raw shape).
     if (typeof o !== 'object' || o === null) {
       issues.push(err('BAD_STRUCTURE', `objects[${i}] is not an object`, { objectIndex: i }));
       continue;
     }
-    if (!OBJECT_TYPES.has(o.type)) {
-      issues.push(err('BAD_STRUCTURE', `objects[${i}] has unknown type '${String(o.type)}'`, { objectIndex: i }));
+    if (typeof o.type !== 'string' || !OBJECT_TYPES.has(o.type)) {
+      const extra: Partial<Issue> = { objectIndex: i, params: { x: coordParam(o.x), y: coordParam(o.y) } };
+      if (typeof o.x === 'number') extra.x = o.x;
+      if (typeof o.y === 'number') extra.y = o.y;
+      issues.push(err('BAD_OBJECT_TYPE', `objects[${i}] has unknown type '${String(o.type)}'`, extra));
       continue;
     }
-    const at = { objectIndex: i, x: o.x, y: o.y };
+    // Issue location: x/y only when they are finite numbers (the ValidationIssue contract types them `number`); the raw
+    // values (or '?') go to params so a message template can still show what the object carried.
+    const at: Partial<Issue> = { objectIndex: i, params: { x: coordParam(o.x), y: coordParam(o.y) } };
+    if (Number.isFinite(o.x)) at.x = o.x;
+    if (Number.isFinite(o.y)) at.y = o.y;
     if (o.type === 'start') starts++;
     if (o.type === 'hole') holes++;
     if (!Number.isInteger(o.x) || !Number.isInteger(o.y) || !inBounds(o.x, o.y)) {

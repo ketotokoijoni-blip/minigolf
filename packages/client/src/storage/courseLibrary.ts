@@ -1,17 +1,25 @@
-// Custom course library + editor draft in localStorage (DESIGN §13.3). Stores Course objects as-is; validation is
-// the caller's job (phase 2 re-validates on listing). A throwing or absent storage degrades to an in-memory library.
-import type { Course } from '@puttipeli/shared/course/types';
+// Custom course library + editor draft in localStorage (DESIGN §13.3, §7.5). Stores Course objects as-is (id
+// recomputed with withComputedId on save); `listCoursesWithIssues` re-validates on listing so the single-player
+// setup and the lobby can grey out entries with errors. A throwing or absent storage degrades to an in-memory library.
+import type { Course, ValidationIssue } from '@puttipeli/shared/course/types';
 import { MAX_COURSE_NAME_CHARS } from '@puttipeli/shared/constants';
+import { withComputedId } from '@puttipeli/shared/course/canonical';
+import { parseCourseFile, type ParseResult } from '@puttipeli/shared/course/migrate';
+import { validateCourse, hasValidationErrors } from '@puttipeli/shared/course/validate';
 import type { StorageLike } from './settings';
 import { t } from '../i18n/t';
 
 export interface LibraryEntry { key: string /* uuid, stable across edits */; course: Course; savedAt: number }
+/** A listed entry plus its current validation result (`valid` = no error-level issue). */
+export interface ValidatedEntry extends LibraryEntry { issues: ValidationIssue[]; valid: boolean }
 
 export const LIBRARY_KEY = 'puttipeli.courses.v1';
 export const DRAFT_KEY = 'puttipeli.editorDraft.v1';
 
 export interface CourseLibrary {
   listCourses(): LibraryEntry[];
+  /** listCourses() with validateCourse run on every entry (memoized per key + savedAt). */
+  listCoursesWithIssues(): ValidatedEntry[];
   saveCourse(course: Course, key?: string): LibraryEntry;
   deleteCourse(key: string): void;
   duplicateCourse(key: string): LibraryEntry | null;
@@ -27,7 +35,7 @@ export interface LibraryDeps {
   uuid?: () => string;
   /** Suffix appended to a duplicated course's name. Default: the localised 'library.copySuffix' string. */
   copySuffix?: () => string;
-  /** Hook for WP-A's withComputedId (phase 2). Phase 1 stores the course unchanged. */
+  /** Id normalisation applied on save. Default: withComputedId (content hash, built-in ids kept per R13). */
   normalizeId?: (course: Course) => Course;
 }
 
@@ -60,14 +68,56 @@ function cloneCourse(c: Course): Course {
   return JSON.parse(JSON.stringify(c)) as Course;
 }
 
+/** validateCourse that never throws (a structurally odd stored course is reported as BAD_STRUCTURE). */
+export function safeValidate(course: Course): ValidationIssue[] {
+  try {
+    return validateCourse(course);
+  } catch (err) {
+    return [{ level: 'error', code: 'BAD_STRUCTURE', message: err instanceof Error ? err.message : String(err) }];
+  }
+}
+
+/**
+ * Parse the text of an uploaded/pasted course file: JSON.parse + parseCourseFile. Invalid JSON is reported as a
+ * BAD_JSON issue through the same channel so the UI lists every failure the same way.
+ */
+export function importCourseText(text: string): ParseResult {
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch (err) {
+    return { ok: false, issues: [{ level: 'error', code: 'BAD_JSON', message: err instanceof Error ? err.message : 'invalid JSON' }] };
+  }
+  return parseCourseFile(data);
+}
+
+/** Localised one-line text for a validation issue: t('validation.<code>', params ∪ {x, y}). */
+export function issueMessage(issue: ValidationIssue): string {
+  const params: Record<string, string | number> = { ...(issue.params ?? {}) };
+  if (issue.x !== undefined && params.x === undefined) params.x = issue.x;
+  if (issue.y !== undefined && params.y === undefined) params.y = issue.y;
+  const key = `validation.${issue.code}`;
+  const text = t(key, params);
+  return text === key ? issue.message : text;
+}
+
 export function createCourseLibrary(deps: LibraryDeps = {}): CourseLibrary {
   const storage = deps.storage === undefined ? defaultStorage() : deps.storage;
   const now = deps.now ?? (() => Date.now());
   const uuid = deps.uuid ?? randomKey;
   const copySuffix = deps.copySuffix ?? (() => t('library.copySuffix'));
-  const normalizeId = deps.normalizeId ?? ((c: Course) => c); // TODO phase 2: withComputedId from @puttipeli/shared/course/canonical
+  const normalizeId = deps.normalizeId ?? withComputedId;
   const listeners = new Set<() => void>();
   let entries: LibraryEntry[] | null = null;
+  const issueCache = new Map<string, { savedAt: number; issues: ValidationIssue[] }>();
+
+  const issuesOf = (e: LibraryEntry): ValidationIssue[] => {
+    const hit = issueCache.get(e.key);
+    if (hit && hit.savedAt === e.savedAt) return hit.issues;
+    const issues = safeValidate(e.course);
+    issueCache.set(e.key, { savedAt: e.savedAt, issues });
+    return issues;
+  };
 
   const load = (): LibraryEntry[] => {
     if (entries) return entries;
@@ -98,6 +148,11 @@ export function createCourseLibrary(deps: LibraryDeps = {}): CourseLibrary {
   return {
     listCourses: () => load().map(copyEntry),
 
+    listCoursesWithIssues: () => load().map((e) => {
+      const issues = issuesOf(e).map((i) => ({ ...i }));
+      return { ...copyEntry(e), issues, valid: !hasValidationErrors(issues) };
+    }),
+
     saveCourse(course, key) {
       const list = load();
       const stored = normalizeId(cloneCourse(course));
@@ -113,6 +168,7 @@ export function createCourseLibrary(deps: LibraryDeps = {}): CourseLibrary {
       const i = list.findIndex((e) => e.key === key);
       if (i < 0) return;
       list.splice(i, 1);
+      issueCache.delete(key);
       persist();
     },
 
@@ -131,6 +187,7 @@ export function createCourseLibrary(deps: LibraryDeps = {}): CourseLibrary {
 
     clearCourses() {
       entries = [];
+      issueCache.clear();
       try { storage?.removeItem(LIBRARY_KEY); } catch { /* ignore */ }
       listeners.forEach((l) => l());
     },
@@ -163,6 +220,7 @@ export function createCourseLibrary(deps: LibraryDeps = {}): CourseLibrary {
 // Default singleton bound to window.localStorage (lazy: nothing is read at import time).
 const lib = createCourseLibrary();
 export const listCourses = (): LibraryEntry[] => lib.listCourses();
+export const listCoursesWithIssues = (): ValidatedEntry[] => lib.listCoursesWithIssues();
 export const saveCourse = (course: Course, key?: string): LibraryEntry => lib.saveCourse(course, key);
 export const deleteCourse = (key: string): void => lib.deleteCourse(key);
 export const duplicateCourse = (key: string): LibraryEntry | null => lib.duplicateCourse(key);

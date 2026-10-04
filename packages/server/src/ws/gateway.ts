@@ -5,6 +5,7 @@ import type { ClientMessage } from '@puttipeli/shared/protocol/messages';
 import type { Clock } from '../clock';
 import type { Logger } from '../log';
 import type { RoomManager } from '../rooms/roomManager';
+import { errorMessage } from '../rooms/session';
 import { ClientSession } from './connection';
 import type { Connection, ConnectionHandler } from './transport';
 
@@ -86,17 +87,7 @@ export class Gateway implements ConnectionHandler {
   }
 }
 
-/** English developer strings for error replies (clients localize by code, §6.4). */
+/** English developer strings for error replies (clients localize by code, §6.4). Shared table in rooms/session.ts. */
 export function describe(code: ErrorCode): string {
-  switch (code) {
-    case ErrorCode.SERVER_FULL: return 'The server has no free room slots';
-    case ErrorCode.ROOM_NOT_FOUND: return 'No room with that code';
-    case ErrorCode.ROOM_FULL: return 'The room is full';
-    case ErrorCode.NAME_TAKEN: return 'That name is already used in the room';
-    case ErrorCode.ALREADY_IN_ROOM: return 'Already in a room; leave it first';
-    case ErrorCode.SESSION_EXPIRED: return 'The session is no longer valid';
-    case ErrorCode.GAME_IN_PROGRESS: return 'A game is in progress';
-    case ErrorCode.NOT_IN_ROOM: return 'Not in a room';
-    default: return code;
-  }
+  return errorMessage(code);
 }

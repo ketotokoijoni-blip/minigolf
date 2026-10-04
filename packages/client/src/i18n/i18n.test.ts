@@ -8,6 +8,8 @@ const VALIDATION_CODES = [
   'OBJECT_ON_WALL', 'MAGNET_NOT_ON_FULL', 'OBJECT_ON_HAZARD', 'TELEPORT_GROUP_SIZE', 'BAD_TELEPORT_GROUP', 'BAD_MAGNET',
   'BAD_RULES', 'BAD_NAME', 'BAD_AUTHOR', 'BAD_DESCRIPTION', 'TOO_LARGE',
   'UNREACHABLE_HOLE', 'HOLE_NEXT_TO_START', 'OPEN_BORDER', 'PAR_HIGH',
+  // R14/R15: parseCourseFile codes reported through the same channel, plus the client's own BAD_JSON
+  'BAD_OBJECT_TYPE', 'BAD_STRUCTURE', 'FORMAT_UNKNOWN', 'VERSION_TOO_NEW', 'BAD_JSON',
 ];
 
 describe('core dictionaries', () => {
@@ -21,7 +23,7 @@ describe('core dictionaries', () => {
     for (const d of [fi, en]) for (const [k, v] of Object.entries(d)) expect(v, k).not.toBe('');
   });
 
-  it('covers every validation code of DESIGN §7.5', () => {
+  it('covers every validation code of DESIGN §7.5 and R15', () => {
     for (const code of VALIDATION_CODES) {
       expect(fi[`validation.${code}`], code).toBeTypeOf('string');
       expect(en[`validation.${code}`], code).toBeTypeOf('string');

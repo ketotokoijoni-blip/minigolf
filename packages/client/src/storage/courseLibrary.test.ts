@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { Course } from '@puttipeli/shared/course/types';
-import { createCourseLibrary, looksLikeCourse, randomKey, LIBRARY_KEY, DRAFT_KEY } from './courseLibrary';
+import { BUILTIN_COURSES } from '@puttipeli/shared/course/builtin';
+import { createCourseLibrary, looksLikeCourse, randomKey, importCourseText, issueMessage, safeValidate, LIBRARY_KEY, DRAFT_KEY } from './courseLibrary';
 import type { StorageLike } from './settings';
+import { setLanguage } from '../i18n/t';
+import '../i18n/fi';
+import '../i18n/en';
 
 const row = (c: string): string => c.repeat(49);
 function makeCourse(name: string): Course {
@@ -40,6 +44,102 @@ function lib(storage: StorageLike | null) {
   let now = 1000;
   return createCourseLibrary({ storage, uuid: () => `k${++n}`, now: () => now++, copySuffix: () => ' (kopio)' });
 }
+
+describe('courseLibrary phase 2: ids and validation on listing', () => {
+  it('saves with a computed content id (withComputedId) and keeps built-in ids', () => {
+    const l = lib(new MemoryStorage());
+    const e = l.saveCourse(makeCourse('Hash'));
+    expect(e.course.id).toMatch(/^c_[0-9a-f]{16}$/);
+    const same = l.saveCourse({ ...makeCourse('Hash'), id: 'whatever' });
+    expect(same.course.id).toBe(e.course.id);
+    const b = l.saveCourse(BUILTIN_COURSES[0]!);
+    expect(b.course.id).toBe('b_01');
+  });
+
+  it('listCoursesWithIssues re-validates every entry and greys out the ones with errors', () => {
+    const storage = new MemoryStorage();
+    const l = lib(storage);
+    l.saveCourse(makeCourse('Kelpo'));
+    const broken = makeCourse('Rikki');
+    broken.objects = [{ type: 'start', x: 2, y: 12 }]; // no hole
+    l.saveCourse(broken);
+    const warn = makeCourse('Varoitus');
+    warn.objects = [{ type: 'start', x: 2, y: 12 }, { type: 'hole', x: 3, y: 12 }]; // hole next to start
+    l.saveCourse(warn);
+    const listed = l.listCoursesWithIssues();
+    expect(listed.map((e) => e.valid)).toEqual([true, false, true]);
+    expect(listed[0]!.issues).toEqual([]);
+    expect(listed[1]!.issues.map((i) => i.code)).toContain('NO_HOLE');
+    expect(listed[2]!.issues.map((i) => i.code)).toContain('HOLE_NEXT_TO_START');
+    expect(listed[2]!.issues.every((i) => i.level === 'warning')).toBe(true);
+    // A corrupt entry that passes the structural check is still listed, as invalid, without throwing.
+    const raw = JSON.parse(storage.getItem(LIBRARY_KEY)!) as { course: Record<string, unknown> }[];
+    raw[0]!.course.surface = ['short'];
+    storage.setItem(LIBRARY_KEY, JSON.stringify(raw));
+    const relisted = lib(storage).listCoursesWithIssues();
+    expect(relisted[0]!.valid).toBe(false);
+    expect(relisted[0]!.issues[0]!.level).toBe('error');
+    // Listing returns copies: mutating them does not touch the library.
+    relisted[2]!.course.name = 'x';
+    expect(lib(storage).listCoursesWithIssues()[2]!.course.name).toBe('Varoitus');
+  });
+
+  it('safeValidate never throws', () => {
+    expect(safeValidate({} as never).some((i) => i.level === 'error')).toBe(true);
+  });
+});
+
+describe('importCourseText', () => {
+  it('accepts a built-in course file and keeps its id', () => {
+    const r = importCourseText(JSON.stringify(BUILTIN_COURSES[1]));
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.course.id).toBe('b_02');
+      expect(r.course.name).toBe(BUILTIN_COURSES[1]!.name);
+    }
+  });
+
+  it('accepts a custom course and computes a c_ id, reporting warnings', () => {
+    const c = makeCourse('Oma');
+    c.objects = [{ type: 'start', x: 2, y: 12 }, { type: 'hole', x: 3, y: 12 }];
+    const r = importCourseText(JSON.stringify(c));
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.course.id).toMatch(/^c_[0-9a-f]{16}$/);
+      expect(r.warnings.map((i) => i.code)).toContain('HOLE_NEXT_TO_START');
+    }
+  });
+
+  it('reports invalid JSON, foreign files, too-new versions and validation errors as issues', () => {
+    const bad = importCourseText('{not json');
+    expect(bad.ok).toBe(false);
+    if (!bad.ok) expect(bad.issues.map((i) => i.code)).toEqual(['BAD_JSON']);
+    const foreign = importCourseText('{"hello":"world"}');
+    if (!foreign.ok) expect(foreign.issues.map((i) => i.code)).toEqual(['FORMAT_UNKNOWN']);
+    const tooNew = importCourseText(JSON.stringify({ ...makeCourse('Uusi'), formatVersion: 99 }));
+    if (!tooNew.ok) expect(tooNew.issues.map((i) => i.code)).toEqual(['VERSION_TOO_NEW']);
+    const structure = importCourseText(JSON.stringify({ ...makeCourse('Rakenne'), walls: 'nope' }));
+    if (!structure.ok) expect(structure.issues.map((i) => i.code)).toEqual(['BAD_STRUCTURE']);
+    const noStart = importCourseText(JSON.stringify({ ...makeCourse('Ei lähtöä'), objects: [{ type: 'hole', x: 40, y: 12 }] }));
+    expect(noStart.ok).toBe(false);
+    if (!noStart.ok) expect(noStart.issues.map((i) => i.code)).toContain('NO_START');
+    for (const r of [bad, foreign, tooNew, structure, noStart]) expect(r.ok).toBe(false);
+  });
+
+  it('issueMessage localises every reported code with its params', () => {
+    setLanguage('fi');
+    expect(issueMessage({ level: 'error', code: 'BAD_JSON', message: 'x' })).toBe('Tiedosto ei ole kelvollista JSON-muotoa');
+    expect(issueMessage({ level: 'error', code: 'OBJECT_ON_WALL', message: 'x', x: 4, y: 5 })).toBe('Kohde ei voi olla seinän päällä (4, 5)');
+    expect(issueMessage({ level: 'error', code: 'TELEPORT_GROUP_SIZE', message: 'x', params: { group: 1, count: 3 } })).toContain('3 laattaa');
+    expect(issueMessage({ level: 'error', code: 'SOMETHING_NEW', message: 'dev fallback' })).toBe('dev fallback');
+    setLanguage('en');
+    try {
+      expect(issueMessage({ level: 'error', code: 'FORMAT_UNKNOWN', message: 'x' })).toBe('The file is not a Puttipeli course file');
+    } finally {
+      setLanguage('fi');
+    }
+  });
+});
 
 describe('courseLibrary with working storage', () => {
   it('starts empty and persists saves', () => {

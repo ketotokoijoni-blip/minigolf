@@ -258,14 +258,15 @@ describe('in-room messages', () => {
     expect(snap?.serverTimeMs).toBe(h.clock.now());
   });
 
-  it('phase 1 stubs answer game-flow messages with an error instead of silence', () => {
+  it('game-flow messages reach the Authority: start gating and course selection answer with real codes', () => {
     const h = harness();
     const host = h.createRoom();
     host.c.clearSent();
     host.c.receive({ t: 'startGame' });
+    expect(host.c.sentOf('error').map((e) => e.code)).toEqual(['NOT_ENOUGH_PLAYERS']);
     host.c.receive({ t: 'setCourses', courses: [{ kind: 'builtin', id: 'b_01' }] });
-    expect(host.c.sentOf('error')).toHaveLength(2);
-    expect(host.c.sentOf('error').every((e) => e.code === 'INVALID_MESSAGE')).toBe(true);
+    expect(h.events(host.c).at(-1)).toMatchObject({ type: 'coursesChanged', courses: [{ id: 'b_01' }] });
+    expect(h.rooms.get(host.code)?.state.courses.map((c) => c.id)).toEqual(['b_01']);
   });
 });
 
