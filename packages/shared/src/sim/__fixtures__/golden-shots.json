@@ -1,0 +1,430 @@
+{
+  "simVersion": 1,
+  "shots": [
+    {
+      "course": "test:open",
+      "from": {
+        "x": 52.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 12000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 339,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 118740907
+      }
+    },
+    {
+      "course": "test:open",
+      "from": {
+        "x": 52.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 8000,
+        "dy": -6000
+      },
+      "expect": {
+        "ticks": 308,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 3804520678
+      }
+    },
+    {
+      "course": "test:open",
+      "from": {
+        "x": 52.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": -3000,
+        "dy": 9000
+      },
+      "expect": {
+        "ticks": 251,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 2485502265
+      }
+    },
+    {
+      "course": "test:open",
+      "from": {
+        "x": 52.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 11000,
+        "dy": 2000
+      },
+      "expect": {
+        "ticks": 325,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 2468472142
+      }
+    },
+    {
+      "course": "test:open",
+      "from": {
+        "x": 600,
+        "y": 300
+      },
+      "shot": {
+        "dx": -9000,
+        "dy": -7000
+      },
+      "expect": {
+        "ticks": 327,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 821317385
+      }
+    },
+    {
+      "course": "test:arena",
+      "from": {
+        "x": 37.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 12000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 222,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 138574343
+      }
+    },
+    {
+      "course": "test:arena",
+      "from": {
+        "x": 37.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 10000,
+        "dy": -3000
+      },
+      "expect": {
+        "ticks": 203,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 4138804233
+      }
+    },
+    {
+      "course": "test:arena",
+      "from": {
+        "x": 37.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 9000,
+        "dy": 4000
+      },
+      "expect": {
+        "ticks": 208,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 2577920696
+      }
+    },
+    {
+      "course": "test:arena",
+      "from": {
+        "x": 450,
+        "y": 60
+      },
+      "shot": {
+        "dx": 0,
+        "dy": 12000
+      },
+      "expect": {
+        "ticks": 209,
+        "result": "acid",
+        "penalty": 1,
+        "checksum": 2390004099
+      }
+    },
+    {
+      "course": "test:arena",
+      "from": {
+        "x": 630,
+        "y": 320
+      },
+      "shot": {
+        "dx": -11000,
+        "dy": -4000
+      },
+      "expect": {
+        "ticks": 68,
+        "result": "water",
+        "penalty": 1,
+        "checksum": 2332099977
+      }
+    },
+    {
+      "course": "test:corridors",
+      "from": {
+        "x": 22.5,
+        "y": 37.5
+      },
+      "shot": {
+        "dx": 12000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 340,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 4230406652
+      }
+    },
+    {
+      "course": "test:corridors",
+      "from": {
+        "x": 22.5,
+        "y": 37.5
+      },
+      "shot": {
+        "dx": 9000,
+        "dy": 3000
+      },
+      "expect": {
+        "ticks": 294,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 4095511916
+      }
+    },
+    {
+      "course": "test:corridors",
+      "from": {
+        "x": 300,
+        "y": 37.5
+      },
+      "shot": {
+        "dx": -12000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 317,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 2895931939
+      }
+    },
+    {
+      "course": "test:corridors",
+      "from": {
+        "x": 712.5,
+        "y": 97.5
+      },
+      "shot": {
+        "dx": 0,
+        "dy": -12000
+      },
+      "expect": {
+        "ticks": 172,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 3742969260
+      }
+    },
+    {
+      "course": "test:corridors",
+      "from": {
+        "x": 112.5,
+        "y": 157.5
+      },
+      "shot": {
+        "dx": 12000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 1248,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 4062831123
+      }
+    },
+    {
+      "course": "test:slopes",
+      "from": {
+        "x": 37.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 12000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 613,
+        "result": "holed",
+        "penalty": 0,
+        "checksum": 3778107060
+      }
+    },
+    {
+      "course": "test:slopes",
+      "from": {
+        "x": 37.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 6000,
+        "dy": -6000
+      },
+      "expect": {
+        "ticks": 919,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 1207259489
+      }
+    },
+    {
+      "course": "test:slopes",
+      "from": {
+        "x": 37.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 3000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 429,
+        "result": "holed",
+        "penalty": 0,
+        "checksum": 3778107060
+      }
+    },
+    {
+      "course": "test:slopes",
+      "from": {
+        "x": 600,
+        "y": 100
+      },
+      "shot": {
+        "dx": -5000,
+        "dy": 5000
+      },
+      "expect": {
+        "ticks": 669,
+        "result": "holed",
+        "penalty": 0,
+        "checksum": 3778107060
+      }
+    },
+    {
+      "course": "test:slopes",
+      "from": {
+        "x": 367.5,
+        "y": 60
+      },
+      "shot": {
+        "dx": 0,
+        "dy": 12000
+      },
+      "expect": {
+        "ticks": 479,
+        "result": "holed",
+        "penalty": 0,
+        "checksum": 3778107060
+      }
+    },
+    {
+      "course": "test:ice",
+      "from": {
+        "x": 37.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 12000,
+        "dy": 0
+      },
+      "expect": {
+        "ticks": 3600,
+        "result": "timeout",
+        "penalty": 0,
+        "checksum": 841616675
+      }
+    },
+    {
+      "course": "test:ice",
+      "from": {
+        "x": 37.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 10000,
+        "dy": -6000
+      },
+      "expect": {
+        "ticks": 1476,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 3686722416
+      }
+    },
+    {
+      "course": "test:ice",
+      "from": {
+        "x": 37.5,
+        "y": 187.5
+      },
+      "shot": {
+        "dx": 7000,
+        "dy": 7000
+      },
+      "expect": {
+        "ticks": 1278,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 1200765678
+      }
+    },
+    {
+      "course": "test:ice",
+      "from": {
+        "x": 500,
+        "y": 200
+      },
+      "shot": {
+        "dx": -11900,
+        "dy": 1000
+      },
+      "expect": {
+        "ticks": 1358,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 639494147
+      }
+    },
+    {
+      "course": "test:ice",
+      "from": {
+        "x": 100,
+        "y": 330
+      },
+      "shot": {
+        "dx": 8400,
+        "dy": -8400
+      },
+      "expect": {
+        "ticks": 1825,
+        "result": "stopped",
+        "penalty": 0,
+        "checksum": 1860237835
+      }
+    }
+  ]
+}
