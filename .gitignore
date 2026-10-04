@@ -12,3 +12,6 @@ Thumbs.db
 # tsc -b is typecheck-only: declarations and build info land in an ignored folder (DESIGN D8)
 .tsout/
 *.tsbuildinfo
+e2e/screenshots/
+test-results/
+playwright-report/

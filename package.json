@@ -18,10 +18,13 @@
     "test:golden-update": "cross-env GOLDEN_UPDATE=1 vitest run packages/shared/src/sim",
     "typecheck": "tsc -b packages/shared packages/client packages/server",
     "lint": "eslint .",
-    "check": "npm run typecheck && npm run lint && npm test"
+    "check": "npm run typecheck && npm run lint && npm test",
+    "e2e": "playwright test",
+    "e2e:headed": "playwright test --headed"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
+    "@playwright/test": "^1.63.0",
     "@types/node": "^24.0.0",
     "@types/ws": "^8.5.13",
     "concurrently": "^9.1.0",
