@@ -1,0 +1,26 @@
+# Render Blueprint for Puttipeli (DESIGN §14.4) - the free alternative to Fly.io.
+# Free web services spin down after ~15 min without traffic (cold start 30-60 s) and every open room is lost when
+# that happens, so this is the fallback, not the recommendation; the "starter" plan removes the sleep.
+# Deploy: push the repository to GitHub/GitLab, then in the Render dashboard choose "New > Blueprint" and point it at
+# this file. Rooms are in-memory: keep exactly one instance (the free and starter plans run one).
+services:
+  - type: web
+    name: puttipeli
+    runtime: docker
+    plan: free              # 'starter' removes the sleep-on-idle
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "8080"
+      - key: PUBLIC_ORIGIN
+        value: https://puttipeli.onrender.com   # replace with the URL Render assigns to the service
+      - key: TRUST_PROXY
+        value: "true"
+      - key: LOG_LEVEL
+        value: info

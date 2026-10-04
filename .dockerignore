@@ -1,0 +1,35 @@
+# Build context filter for the Dockerfile (DESIGN §14.2). Dependencies are installed and both bundles are built inside
+# the image, so nothing generated on the host may leak into the context.
+node_modules
+**/node_modules
+**/dist
+**/.tsout
+**/*.tsbuildinfo
+.vite
+**/.vite
+coverage
+.git
+.gitattributes
+.gitignore
+.env
+.env.*
+*.log
+.DS_Store
+Thumbs.db
+
+# Documentation and agent/project notes are not part of the runtime image.
+docs
+*.md
+asd
+
+# Browser end-to-end tests (WP-L) and their output never run inside the image.
+e2e
+playwright.config.ts
+test-results
+playwright-report
+
+# Deployment descriptors are read by the hosting platform, not by the build.
+Dockerfile
+.dockerignore
+fly.toml
+render.yaml

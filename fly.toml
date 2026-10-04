@@ -1,0 +1,48 @@
+# Fly.io configuration for Puttipeli (DESIGN §14.3, D23). Rooms live in process memory, so the game must run on exactly
+# ONE machine: after the first deploy run `fly scale count 1` and never scale above it.
+#
+# First deploy (done by you, never by an agent):
+#   fly launch --no-deploy --copy-config      # creates the app from this file; pick a free name if "puttipeli" is taken
+#   (edit `app` below and PUBLIC_ORIGIN to match the final https://<app>.fly.dev URL)
+#   fly deploy --build-arg BUILD_ID=$(git rev-parse --short HEAD)
+#   fly scale count 1
+#   fly status && fly logs
+
+app = "puttipeli"
+primary_region = "arn"            # Stockholm, ~10 ms from Finland
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  PUBLIC_ORIGIN = "https://puttipeli.fly.dev"   # set to the real app URL after `fly launch`; comma-separate several
+  LOG_LEVEL = "info"
+  TRUST_PROXY = "true"                          # Fly's proxy sets X-Forwarded-For (used for logging only)
+  # PORT, HOST and PUBLIC_DIR come from the Dockerfile (8080, 0.0.0.0, /app/packages/client/dist).
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # MODE A (default, recommended): always on. Rooms live in memory, so exactly one always-on machine is required.
+  # Cost: one shared-cpu-1x / 256 MB machine is roughly 2-3 USD per month.
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+  # MODE B (near-zero cost): comment the three lines above and uncomment these. The machine suspends when idle and
+  # resumes in ~1 s on the first request; process memory is preserved on suspend, but a long idle gap can still end
+  # rooms (room TTL timers keep counting, and a stopped machine drops every WebSocket).
+  # auto_stop_machines = "suspend"
+  # auto_start_machines = true
+  # min_machines_running = 0
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/healthz"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

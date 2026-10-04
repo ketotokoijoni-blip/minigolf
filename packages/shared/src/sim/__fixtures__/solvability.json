@@ -1,0 +1,83 @@
+{
+  "simVersion": 1,
+  "note": "Scripted shot sequence per built-in course that holes out in <= par + 2 strokes (DESIGN D12, §16.2). Shots are ShotInput (1/100 px pull). Regenerate after a tuning change with SOLVABILITY_UPDATE=1 npx vitest run packages/shared/src/sim/solvability (the test then searches and rewrites this file).",
+  "courses": [
+    {
+      "id": "b_01",
+      "par": 2,
+      "strokes": 1,
+      "shots": [
+        { "dx": 12000, "dy": 0 }
+      ]
+    },
+    {
+      "id": "b_02",
+      "par": 2,
+      "strokes": 1,
+      "shots": [
+        { "dx": 11883, "dy": -1670 }
+      ]
+    },
+    {
+      "id": "b_03",
+      "par": 3,
+      "strokes": 1,
+      "shots": [
+        { "dx": 8560, "dy": -2781 }
+      ]
+    },
+    {
+      "id": "b_04",
+      "par": 3,
+      "strokes": 1,
+      "shots": [
+        { "dx": 10500, "dy": 0 }
+      ]
+    },
+    {
+      "id": "b_05",
+      "par": 3,
+      "strokes": 1,
+      "shots": [
+        { "dx": 6741, "dy": 3288 }
+      ]
+    },
+    {
+      "id": "b_06",
+      "par": 3,
+      "strokes": 2,
+      "shots": [
+        { "dx": 7053, "dy": -9708 },
+        { "dx": 2385, "dy": -3816 }
+      ]
+    },
+    {
+      "id": "b_07",
+      "par": 4,
+      "strokes": 2,
+      "shots": [
+        { "dx": 7461, "dy": -5033 },
+        { "dx": 6000, "dy": -10392 }
+      ]
+    },
+    {
+      "id": "b_08",
+      "par": 3,
+      "strokes": 3,
+      "shots": [
+        { "dx": 6000, "dy": 0 },
+        { "dx": -3694, "dy": 4728 },
+        { "dx": 8978, "dy": -628 }
+      ]
+    },
+    {
+      "id": "b_09",
+      "par": 4,
+      "strokes": 2,
+      "shots": [
+        { "dx": 7294, "dy": 7553 },
+        { "dx": 4366, "dy": -1089 }
+      ]
+    }
+  ]
+}
